@@ -23,7 +23,7 @@ pnpm run lint
 ## Rules
 
 1. **Never hand-roll API request/response types**. Import from `@opensea/api-types` (or re-export through `src/api/types.ts`) using canonical schema names.
-2. **Chain enum sync is compile-time enforced**. Adding a `ChainIdentifier` without a matching `Chain` value or payment-token case fails `pnpm check-types`. Update `scripts/chain-data.json` at the monorepo root and run `pnpm sync-chains` when adding chains.
+2. **Chain enum sync is compile-time enforced**. Adding a `ChainIdentifier` without a matching `Chain` value or payment-token case fails `pnpm check-types`. Update `scripts/chain-data.json` at the monorepo root and run `pnpm sync-chains` when adding chains, then `pnpm format` — the script also rewrites `chain-data.json` itself (persisting `_slugOrder`), and its `JSON.stringify` output fails `pnpm lint` until Biome reformats it.
 3. **Dual provider support**. Changes to `BaseOpenSeaSDK` affect both ethers and viem paths; update both provider adapters if provider-specific logic changes.
 4. **OAuth token contract**. `OpenSeaOAuth` requests `offline_access`; refresh responses may omit rotation — keep the previous refresh token. The top-level `wallet` JWT claim is wallet identity; `sub` is an account id.
 5. **No secret leakage**. API keys live in `OpenSeaAPIConfig.apiKey`; never log them.

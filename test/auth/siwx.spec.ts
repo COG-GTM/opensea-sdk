@@ -145,6 +145,7 @@ describe("SIWX wallet-link helpers", () => {
       message: {
         domain: string
         nonce: string
+        statement: string
         uri: string
         accountType?: string
       }
@@ -156,6 +157,9 @@ describe("SIWX wallet-link helpers", () => {
     expect(body.message.domain).toBe("opensea.io")
     expect(body.message.uri).toBe("https://opensea.io")
     expect(body.message.nonce).toBe("abcd1234efgh5678")
+    expect(body.message.statement).toBe(
+      "Click to sign in and accept the Platform Terms of Service (https://opensea.io/tos) and Privacy Policy (https://opensea.io/privacy).",
+    )
     expect(body.message.accountType).toBe("Ethereum")
   })
 

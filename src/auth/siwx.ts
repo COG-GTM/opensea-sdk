@@ -8,7 +8,7 @@ import type { AuthSigner } from "./types"
 
 const DEFAULT_API_BASE_URL = "https://api.opensea.io"
 const DEFAULT_STATEMENT =
-  "Click to sign in and accept the OpenSea Terms of Service (https://opensea.io/tos) and Privacy Policy (https://opensea.io/privacy)."
+  "Click to sign in and accept the Platform Terms of Service (https://opensea.io/tos) and Privacy Policy (https://opensea.io/privacy)."
 
 export type ChainArch = "EVM" | "SVM" | "BITCOIN"
 export type AccountType = "Ethereum" | "Solana" | "Bitcoin"

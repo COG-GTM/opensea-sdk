@@ -37,7 +37,7 @@ const DEFAULT_TOKEN_TTL_SECONDS = 3600
 const SCOPED_TOKEN_CLEANUP_ATTEMPTS = 2
 const REFRESH_BUFFER_MS = 60_000
 const SIWE_STATEMENT =
-  "Click to sign in and accept the OpenSea Terms of Service (https://opensea.io/tos) and Privacy Policy (https://opensea.io/privacy)."
+  "Click to sign in and accept the Platform Terms of Service (https://opensea.io/tos) and Privacy Policy (https://opensea.io/privacy)."
 const SESSION_COOKIE_NAMES = ["access_token", "refresh_token"]
 
 interface ScopedTokenCreatedResponse {
