@@ -104,6 +104,14 @@ export const getListNFTsByCollectionPath = (slug: string) => {
   return `${API_V2_PREFIX}/collection/${segment(slug)}/nfts`
 }
 
+export const getListNFTsByGroupPath = (group: string) => {
+  return `${API_V2_PREFIX}/nfts/group/${segment(group)}`
+}
+
+export const getNFTGroupFacetsPath = (group: string) => {
+  return `${API_V2_PREFIX}/nfts/group/${segment(group)}/facets`
+}
+
 export const getListNFTsByContractPath = (chain: Chain, address: string) => {
   return `${API_V2_PREFIX}/chain/${segment(chain)}/contract/${segment(address)}/nfts`
 }

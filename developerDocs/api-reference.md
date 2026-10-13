@@ -187,6 +187,49 @@ const { nfts: withAirdrops } = await openseaSDK.api.nfts.getNFTsByAccount(
 
 ---
 
+### Get NFTs by Collection Group
+
+Search NFTs across every collection in a group, such as `trading_cards`, by normalized attributes that are consistent across issuers (franchise, grader, grade, subject, year, set, language, edition, product type). Each attribute filter is a list that matches any of its values, and separate filters are AND-combined. List values are sent as repeated query parameters (`?grader=PSA&grader=CGC`).
+
+```typescript
+const { nfts, next } = await openseaSDK.api.nfts.getNFTsByGroup(
+  "trading_cards",
+  {
+    franchise: ["Pokemon"],
+    grader: ["PSA", "CGC"],
+    grade: ["10"],
+    isListed: true,
+    sortBy: "price",
+    sortDirection: "asc",
+    limit: 20,
+  },
+);
+```
+
+**Parameters:** `group` (string, required) and an optional `GetNFTsByGroupArgs`: `collectionSlugs` (max 10), `query`, `isListed`, `minEstimatedValueUsd`, `maxEstimatedValueUsd`, `sortBy`, `sortDirection`, `limit` (1-100), `next`, and the attribute filters above (`productType` for product type).
+
+**Returns:** `GetNFTsByGroupResponse` with `nfts` (`StandardizedNFT[]`) and an optional `next` cursor.
+
+---
+
+### Get Collection Group Facets
+
+Fetch the values of each normalized attribute in a group with the number of matching NFTs. Each facet is narrowed by the filters of the other types, so a facet keeps listing all of its own values.
+
+```typescript
+const { facets } = await openseaSDK.api.nfts.getNFTGroupFacets(
+  "trading_cards",
+  { facetTypes: ["grader", "grade"], franchise: ["Pokemon"] },
+);
+// facets: [{ type: "grader", values: [{ value: "PSA", count: 417810 }, ...] }, ...]
+```
+
+**Parameters:** `group` (string, required) and an optional `GetNFTGroupFacetsArgs`: `facetTypes`, `collectionSlugs` (max 10), and the same attribute filters.
+
+**Returns:** `GetNFTGroupFacetsResponse` with `facets`.
+
+---
+
 ### Refresh NFT Metadata
 
 Force a metadata refresh for an NFT. Useful after updating metadata onchain.

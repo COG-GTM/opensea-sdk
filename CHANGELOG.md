@@ -1,5 +1,15 @@
 # @opensea/sdk
 
+## 12.12.0
+
+### Minor Changes
+
+- 92926ec: Add the collection group NFT search and facets endpoints (`GET /api/v2/nfts/group/{group}` and `GET /api/v2/nfts/group/{group}/facets`), which search NFTs across every collection in a group, such as `trading_cards`, by normalized attributes (franchise, grader, grade, subject, year, set, language, edition, product type).
+
+  In the SDK, `api.nfts.getNFTsByGroup(group, args?)` and `api.nfts.getNFTGroupFacets(group, args?)` take `GetNFTsByGroupArgs` and `GetNFTGroupFacetsArgs` and return `GetNFTsByGroupResponse` and `GetNFTGroupFacetsResponse`. Attribute filters are string arrays sent as repeated query parameters, since a comma-joined value is matched as one literal.
+
+  In the CLI, `opensea nfts list-by-group <group>` and `opensea nfts group-facets <group>` take repeatable attribute flags (`--grader PSA --grader CGC`), and the programmatic client gains `nfts.listByGroup` and `nfts.groupFacets`. The CLI HTTP client now sends an array query value as repeated parameters instead of `String(array)`. No existing command passed an array; they join comma-separated values themselves.
+
 ## 12.11.4
 
 ### Patch Changes

@@ -50,6 +50,9 @@ import type {
   NftResponse,
   OffersResponse,
   paths,
+  StandardizedNft,
+  StandardizedNftFacetsResponse,
+  StandardizedNftListResponse,
   TokenAccountActivityPaginatedResponse,
   TokenBalancePaginatedResponse,
   TokenBalanceResponse,
@@ -1481,6 +1484,99 @@ export interface GetNFTsByAccountOptions {
    */
   includeAutoHidden?: boolean
 }
+
+/**
+ * Normalized-attribute filters shared by the collection group NFT search and
+ * facets endpoints. Each value list is sent as a repeated query parameter
+ * (`?grader=PSA&grader=CGC`) and matches any of its values; separate filters
+ * are AND-combined. Discover the values with `getNFTGroupFacets`.
+ *
+ * @category API Query Args
+ */
+export interface NFTGroupFacetFilters {
+  franchise?: string[]
+  grader?: string[]
+  grade?: string[]
+  subject?: string[]
+  year?: string[]
+  set?: string[]
+  language?: string[]
+  edition?: string[]
+  /** Serialized as `product_type`. */
+  productType?: string[]
+}
+
+/**
+ * Sort fields accepted by the collection group NFT search endpoint.
+ * @category API Query Args
+ */
+export type NFTGroupSortBy =
+  | "price"
+  | "top_offer"
+  | "last_sale"
+  | "last_sale_date"
+  | "created_date"
+  | "received_date"
+  | "listing_created_date"
+  | "best_deal"
+  | "estimated_value"
+
+/**
+ * Query args for `GET /api/v2/nfts/group/{group}`.
+ * @category API Query Args
+ */
+export interface GetNFTsByGroupArgs extends NFTGroupFacetFilters {
+  /** Restrict results to these collections in the group (max 10). Defaults to the whole group. */
+  collectionSlugs?: string[]
+  /** Full-text match on NFT name, up to 100 characters. */
+  query?: string
+  /** Only return NFTs that are listed (`true`) or unlisted (`false`). */
+  isListed?: boolean
+  /** Minimum estimated value in USD, inclusive. */
+  minEstimatedValueUsd?: number
+  /** Maximum estimated value in USD, inclusive. */
+  maxEstimatedValueUsd?: number
+  /** Sort field. The server default is `best_deal`. */
+  sortBy?: NFTGroupSortBy
+  /** Sort direction. The server default is `desc`. */
+  sortDirection?: "asc" | "desc"
+  /** Number of NFTs to return (1-100, server default 50). */
+  limit?: number
+  /** Pagination cursor from a previous response's `next`. */
+  next?: string
+}
+
+/**
+ * Query args for `GET /api/v2/nfts/group/{group}/facets`.
+ * @category API Query Args
+ */
+export interface GetNFTGroupFacetsArgs extends NFTGroupFacetFilters {
+  /** Only return these facet types, e.g. `["grader", "grade"]`. Defaults to all. */
+  facetTypes?: string[]
+  /** Restrict counts to these collections in the group (max 10). */
+  collectionSlugs?: string[]
+}
+
+/**
+ * NFT with normalized, issuer-independent attributes, returned by the
+ * collection group search. Camelized from api-types `StandardizedNft`.
+ * @category API Models
+ */
+export type StandardizedNFT = Camelize<StandardizedNft>
+
+/**
+ * Response from the collection group NFT search.
+ * Camelized from api-types `StandardizedNftListResponse`.
+ * @category API Response Types
+ */
+export type GetNFTsByGroupResponse = Camelize<StandardizedNftListResponse>
+
+/**
+ * Facet values and counts for a collection group.
+ * Camelized from api-types `StandardizedNftFacetsResponse`.
+ * @category API Response Types
+ */
+export type GetNFTGroupFacetsResponse = Camelize<StandardizedNftFacetsResponse>
 
 /**
  * Query args for the account portfolio and portfolio history endpoints.

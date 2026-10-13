@@ -3,7 +3,9 @@ import { OpenSeaAPI } from "../../src/api/api"
 import type {
   GetAccountTokensArgs,
   GetEventsArgs,
+  GetNFTGroupFacetsArgs,
   GetNFTsByAccountOptions,
+  GetNFTsByGroupArgs,
   GetTokensArgs,
   PortfolioArgs,
 } from "../../src/api/types"
@@ -85,6 +87,35 @@ const GET_EVENTS_FIELDS = [
 // recorded in INTENTIONALLY_OMITTED above.
 const GET_NFTS_BY_ACCOUNT_FIELDS = ["includeAutoHidden"] as const
 
+const NFT_GROUP_FACET_FILTER_FIELDS = [
+  "franchise",
+  "grader",
+  "grade",
+  "subject",
+  "year",
+  "set",
+  "language",
+  "edition",
+  "productType",
+] as const
+const GET_NFTS_BY_GROUP_FIELDS = [
+  "collectionSlugs",
+  "query",
+  "isListed",
+  "minEstimatedValueUsd",
+  "maxEstimatedValueUsd",
+  "sortBy",
+  "sortDirection",
+  "limit",
+  "next",
+  ...NFT_GROUP_FACET_FILTER_FIELDS,
+] as const
+const GET_NFT_GROUP_FACETS_FIELDS = [
+  "facetTypes",
+  "collectionSlugs",
+  ...NFT_GROUP_FACET_FILTER_FIELDS,
+] as const
+
 // Each of these fails to compile if its interface and its list disagree either way.
 const _getTokensCovers: CoversExactly<GetTokensArgs, typeof GET_TOKENS_FIELDS> =
   GET_TOKENS_FIELDS
@@ -100,6 +131,15 @@ const _getNFTsByAccountCovers: CoversExactly<
   GetNFTsByAccountOptions,
   typeof GET_NFTS_BY_ACCOUNT_FIELDS
 > = GET_NFTS_BY_ACCOUNT_FIELDS
+
+const _getNFTsByGroupCovers: CoversExactly<
+  GetNFTsByGroupArgs,
+  typeof GET_NFTS_BY_GROUP_FIELDS
+> = GET_NFTS_BY_GROUP_FIELDS
+const _getNFTGroupFacetsCovers: CoversExactly<
+  GetNFTGroupFacetsArgs,
+  typeof GET_NFT_GROUP_FACETS_FIELDS
+> = GET_NFT_GROUP_FACETS_FIELDS
 
 const ARGS_TO_OPERATION: Record<
   string,
@@ -129,6 +169,16 @@ const ARGS_TO_OPERATION: Record<
     path: "/api/v2/chain/{chain}/account/{address}/nfts",
     method: "get",
     fields: GET_NFTS_BY_ACCOUNT_FIELDS,
+  },
+  GetNFTsByGroupArgs: {
+    path: "/api/v2/nfts/group/{group}",
+    method: "get",
+    fields: GET_NFTS_BY_GROUP_FIELDS,
+  },
+  GetNFTGroupFacetsArgs: {
+    path: "/api/v2/nfts/group/{group}/facets",
+    method: "get",
+    fields: GET_NFT_GROUP_FACETS_FIELDS,
   },
 }
 
@@ -319,6 +369,43 @@ describe("query arg serialization", () => {
     // The rest of the query still goes out, so an empty query string is not
     // what makes the assertion above pass.
     expect(url.searchParams.get("limit")).toBe("5")
+  })
+
+  it("repeats group facet filters as snake_case params, one per value", async () => {
+    // A comma-joined `grader=PSA,CGC` is read as one literal value and
+    // matches nothing, so each value has to be its own parameter.
+    const url = await urlFor(api =>
+      api.nfts.getNFTsByGroup("trading_cards", {
+        grader: ["PSA", "CGC"],
+        productType: ["card"],
+        collectionSlugs: ["a", "b"],
+        isListed: false,
+        minEstimatedValueUsd: 10.5,
+        sortBy: "estimated_value",
+      }),
+    )
+
+    expect(url.pathname).toBe("/api/v2/nfts/group/trading_cards")
+    expect(url.searchParams.getAll("grader")).toEqual(["PSA", "CGC"])
+    expect(url.searchParams.getAll("product_type")).toEqual(["card"])
+    expect(url.searchParams.getAll("collection_slugs")).toEqual(["a", "b"])
+    expect(url.searchParams.get("is_listed")).toBe("false")
+    expect(url.searchParams.get("min_estimated_value_usd")).toBe("10.5")
+    expect(url.searchParams.get("sort_by")).toBe("estimated_value")
+    expect(url.searchParams.has("productType")).toBe(false)
+  })
+
+  it("repeats facet_types on the group facets endpoint", async () => {
+    const url = await urlFor(api =>
+      api.nfts.getNFTGroupFacets("trading_cards", {
+        facetTypes: ["grader", "grade"],
+        franchise: ["Pokemon"],
+      }),
+    )
+
+    expect(url.pathname).toBe("/api/v2/nfts/group/trading_cards/facets")
+    expect(url.searchParams.getAll("facet_types")).toEqual(["grader", "grade"])
+    expect(url.searchParams.getAll("franchise")).toEqual(["Pokemon"])
   })
 
   it("omits the chain the events feed ignores", async () => {

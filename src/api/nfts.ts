@@ -5,8 +5,10 @@ import {
   getListNFTsByAccountPath,
   getListNFTsByCollectionPath,
   getListNFTsByContractPath,
+  getListNFTsByGroupPath,
   getNFTAnalyticsPath,
   getNFTCollectionPath,
+  getNFTGroupFacetsPath,
   getNFTMetadataPath,
   getNFTOwnersPath,
   getNFTPath,
@@ -19,9 +21,13 @@ import {
   encodeTraitsParam,
   type GetCollectionResponse,
   type GetContractResponse,
+  type GetNFTGroupFacetsArgs,
+  type GetNFTGroupFacetsResponse,
   type GetNFTMetadataResponse,
   type GetNFTResponse,
   type GetNFTsByAccountOptions,
+  type GetNFTsByGroupArgs,
+  type GetNFTsByGroupResponse,
   type ListNFTsResponse,
   type NFTOwnersArgs,
   type NftAnalyticsResponse,
@@ -104,6 +110,37 @@ export class NFTsAPI {
     )
 
     return response
+  }
+
+  /**
+   * Search NFTs across every collection in a group, such as `trading_cards`,
+   * by normalized attributes that are consistent across issuers. Facet
+   * filters match any of their values and are AND-combined with each other.
+   * Use {@link getNFTGroupFacets} to discover the values and their counts.
+   */
+  async getNFTsByGroup(
+    group: string,
+    args: GetNFTsByGroupArgs = {},
+  ): Promise<GetNFTsByGroupResponse> {
+    return this.fetcher.get<GetNFTsByGroupResponse>(
+      getListNFTsByGroupPath(group),
+      args,
+    )
+  }
+
+  /**
+   * Fetch the values of each normalized attribute in a collection group with
+   * the number of matching NFTs. Each facet is narrowed by the filters of the
+   * other types, so a facet keeps listing all of its own values.
+   */
+  async getNFTGroupFacets(
+    group: string,
+    args: GetNFTGroupFacetsArgs = {},
+  ): Promise<GetNFTGroupFacetsResponse> {
+    return this.fetcher.get<GetNFTGroupFacetsResponse>(
+      getNFTGroupFacetsPath(group),
+      args,
+    )
   }
 
   /**

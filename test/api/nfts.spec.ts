@@ -1004,3 +1004,64 @@ describe("API: NFTsAPI", () => {
     })
   })
 })
+
+describe("API: NFTsAPI collection groups", () => {
+  let mockGet: ReturnType<typeof vi.fn>
+  let nftsAPI: NFTsAPI
+
+  beforeEach(() => {
+    const { fetcher, mockGet: getMock } = createMockFetcher()
+    mockGet = getMock
+    nftsAPI = new NFTsAPI(fetcher, Chain.Mainnet)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  test("getNFTsByGroup calls the group path with the args", async () => {
+    mockGet.mockResolvedValue({ nfts: [], next: "cursor-2" })
+
+    const result = await nftsAPI.getNFTsByGroup("trading_cards", {
+      grader: ["PSA"],
+      limit: 10,
+    })
+
+    expect(mockGet).toHaveBeenCalledWith("/api/v2/nfts/group/trading_cards", {
+      grader: ["PSA"],
+      limit: 10,
+    })
+    expect(result.next).toBe("cursor-2")
+  })
+
+  test("getNFTsByGroup sends no filters when called without args", async () => {
+    mockGet.mockResolvedValue({ nfts: [] })
+
+    await nftsAPI.getNFTsByGroup("trading_cards")
+
+    expect(mockGet).toHaveBeenCalledWith("/api/v2/nfts/group/trading_cards", {})
+  })
+
+  test("getNFTsByGroup encodes the group as one path segment", async () => {
+    mockGet.mockResolvedValue({ nfts: [] })
+
+    await nftsAPI.getNFTsByGroup("a/b")
+
+    expect(mockGet.mock.calls[0][0]).toBe("/api/v2/nfts/group/a%2Fb")
+  })
+
+  test("getNFTGroupFacets calls the facets path with the args", async () => {
+    const facets = [{ type: "grader", values: [{ value: "PSA", count: 3 }] }]
+    mockGet.mockResolvedValue({ facets })
+
+    const result = await nftsAPI.getNFTGroupFacets("trading_cards", {
+      facetTypes: ["grader"],
+    })
+
+    expect(mockGet).toHaveBeenCalledWith(
+      "/api/v2/nfts/group/trading_cards/facets",
+      { facetTypes: ["grader"] },
+    )
+    expect(result.facets).toEqual(facets)
+  })
+})
