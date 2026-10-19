@@ -154,6 +154,31 @@ describe("WalletAuthAPI", () => {
         () =>
           api.createCollectionImageUpload("collection", "banner", "image/png"),
       ],
+      [
+        "POST",
+        "/api/v2/collections/my%20collection/media/hero_desktop?content_type=video%2Fmp4",
+        () =>
+          api.createCollectionPageMediaUpload(
+            "my collection",
+            "hero_desktop",
+            "video/mp4",
+          ),
+      ],
+      [
+        "POST",
+        "/api/v2/collections/my%20collection/pricing_currency",
+        () => api.setCollectionPricingCurrency("my collection", body),
+      ],
+      [
+        "POST",
+        "/api/v2/collections/my%20collection/creator_fee_enforcement",
+        () => api.buildCreatorFeeEnforcementTransactions("my collection", body),
+      ],
+      [
+        "POST",
+        "/api/v2/collections/my%20collection/refresh",
+        () => api.refreshCollectionMetadata("my collection"),
+      ],
       ["PATCH", "/api/v2/profile", () => api.updateProfileSettings(body)],
       [
         "POST",
@@ -297,9 +322,24 @@ describe("WalletAuthAPI", () => {
       limit: 20,
     })
 
+    await api.listDropItems("my drop", { limit: 5, next: "cursor-1" })
+    expect(get).toHaveBeenLastCalledWith("/api/v2/drops/my%20drop/items", {
+      limit: 5,
+      next: "cursor-1",
+    })
+    await api.getProfileShelves("0xabc")
+    expect(get).toHaveBeenLastCalledWith("/api/v2/profile/shelves", {
+      address: "0xabc",
+    })
+
     await api.getDropMetadataIpfsProgress("my drop", "run/1")
     expect(get).toHaveBeenLastCalledWith(
       "/api/v2/drops/my%20drop/metadata/ipfs/run%2F1",
+    )
+
+    await api.getCollectionMetadata("my collection")
+    expect(get).toHaveBeenLastCalledWith(
+      "/api/v2/collections/my%20collection/metadata",
     )
 
     await api.listSavedTools({ toolkitName: "trading", limit: 5 })
@@ -451,6 +491,69 @@ describe("drop IPFS metadata responses", () => {
   })
 })
 
+describe("collection management writes", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("puts snake_case bodies on the wire and camelizes the responses", async () => {
+    const responses: unknown[] = [
+      { success: true, workflow_id: "reprice-1" },
+      {
+        transactions: [
+          { to: "0xcontract", from: "0xowner", data: "0x", value: "0" },
+        ],
+      },
+      { success: true },
+    ]
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify(responses.shift()), { status: 200 }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const api = new OpenSeaAPI({ apiKey: "key", authToken: "jwt" })
+
+    const pricing = await api.walletAuth.setCollectionPricingCurrency("drop", {
+      useStablecoin: true,
+    })
+    const enforcement =
+      await api.walletAuth.buildCreatorFeeEnforcementTransactions("drop", {
+        enabled: false,
+      })
+    const refresh = await api.walletAuth.refreshCollectionMetadata("drop")
+
+    const sent = fetchMock.mock.calls.map(call => {
+      const [url, init] = call as unknown as [string, RequestInit]
+      return {
+        path: new URL(url).pathname,
+        method: init.method,
+        body:
+          init.body === undefined ? undefined : JSON.parse(String(init.body)),
+      }
+    })
+    expect(sent).toEqual([
+      {
+        path: "/api/v2/collections/drop/pricing_currency",
+        method: "POST",
+        body: { use_stablecoin: true },
+      },
+      {
+        path: "/api/v2/collections/drop/creator_fee_enforcement",
+        method: "POST",
+        body: { enabled: false },
+      },
+      {
+        path: "/api/v2/collections/drop/refresh",
+        method: "POST",
+        body: undefined,
+      },
+    ])
+    expect(pricing).toEqual({ success: true, workflowId: "reprice-1" })
+    expect(enforcement.transactions[0].from).toBe("0xowner")
+    expect(refresh).toEqual({ success: true })
+  })
+})
+
 describe("drop item media upload batches", () => {
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -492,5 +595,146 @@ describe("drop item media upload batches", () => {
       },
     ])
     expect(saved).toEqual({ success: true })
+  })
+})
+
+describe("drop item listing", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("GETs a page of items with the wallet token and camelizes them", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            items: [
+              {
+                token_id: "7",
+                image_url: "https://example.com/7.png",
+                media_token: "media-7",
+                contract_standard: "erc721",
+                contract_address: "0xabc",
+                chain: "base",
+                attributes: [],
+              },
+            ],
+            next: "cursor-2",
+          }),
+          { status: 200 },
+        ),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const api = new OpenSeaAPI({ apiKey: "key", authToken: "jwt" })
+
+    const page = await api.walletAuth.listDropItems("my/drop", {
+      limit: 5,
+      next: "cursor-1",
+    })
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ]
+    const parsed = new URL(url)
+    expect(init.method ?? "GET").toBe("GET")
+    expect(init.body).toBeUndefined()
+    expect(parsed.pathname).toBe("/api/v2/drops/my%2Fdrop/items")
+    expect(parsed.searchParams.get("limit")).toBe("5")
+    expect(parsed.searchParams.get("next")).toBe("cursor-1")
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      "Bearer jwt",
+    )
+    expect(page).toEqual({
+      items: [
+        {
+          tokenId: "7",
+          imageUrl: "https://example.com/7.png",
+          mediaToken: "media-7",
+          contractStandard: "erc721",
+          contractAddress: "0xabc",
+          chain: "base",
+          attributes: [],
+        },
+      ],
+      next: "cursor-2",
+    })
+  })
+})
+
+describe("profile shelves read", () => {
+  const ADDRESS = "0x8ba1f109551bd432803012645ac136c94c19d6e"
+  const ITEM_OSID = "3f6e2a1c-9b7d-4c5e-8a2f-1d0b6c4e9a73"
+  const wireShelf = {
+    id: "shelf-1",
+    account_address: ADDRESS,
+    title: "Favorites",
+    description: null,
+    display_order: 0,
+    items: [{ chain: "ethereum", contract_address: "0xabc", token_id: "1" }],
+    icon: null,
+    view: "GRID",
+    single_item_shelf_side: null,
+    shelf_item_metadata: { [ITEM_OSID]: { description: "first mint" } },
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function stubShelvesFetch() {
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify([wireShelf]), { status: 200 }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    return fetchMock
+  }
+
+  function lastCall(fetchMock: ReturnType<typeof stubShelvesFetch>) {
+    const [url, init] = fetchMock.mock.lastCall as unknown as [
+      string,
+      RequestInit & { headers: Record<string, string> },
+    ]
+    return { url, init }
+  }
+
+  it("GETs the shelves for an address with only the API key and camelizes them", async () => {
+    const fetchMock = stubShelvesFetch()
+    const api = new OpenSeaAPI({ apiKey: "key" })
+
+    const shelves = await api.walletAuth.getProfileShelves(ADDRESS)
+
+    const { url, init } = lastCall(fetchMock)
+    expect(url).toBe(
+      `https://api.opensea.io/api/v2/profile/shelves?address=${ADDRESS}`,
+    )
+    expect(init.method).toBe("GET")
+    expect(init.headers["X-API-KEY"]).toBe("key")
+    expect(init.headers).not.toHaveProperty("Authorization")
+    expect(shelves).toEqual([
+      {
+        id: "shelf-1",
+        accountAddress: ADDRESS,
+        title: "Favorites",
+        description: null,
+        displayOrder: 0,
+        items: [{ chain: "ethereum", contractAddress: "0xabc", tokenId: "1" }],
+        icon: null,
+        view: "GRID",
+        singleItemShelfSide: null,
+        shelfItemMetadata: { [ITEM_OSID]: { description: "first mint" } },
+      },
+    ])
+  })
+
+  it("sends the wallet token alongside the API key when one is configured", async () => {
+    const fetchMock = stubShelvesFetch()
+    const api = new OpenSeaAPI({ apiKey: "key", authToken: "jwt" })
+
+    await api.walletAuth.getProfileShelves(ADDRESS)
+
+    const { init } = lastCall(fetchMock)
+    expect(init.headers["X-API-KEY"]).toBe("key")
+    expect(init.headers.Authorization).toBe("Bearer jwt")
   })
 })

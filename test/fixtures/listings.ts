@@ -19,6 +19,11 @@ export const mockListing: Listing = {
     signature: "0xSignature",
   },
   protocolAddress: CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+  pricePerItem: {
+    currency: "ETH",
+    decimals: 18,
+    value: "1000000000000000000",
+  },
   remainingQuantity: 1,
   status: OrderStatus.ACTIVE,
 }

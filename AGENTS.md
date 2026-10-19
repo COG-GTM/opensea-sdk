@@ -15,7 +15,7 @@ pnpm run lint
 
 ## Responsibilities
 
-- Provide `OpenSeaSDK` (ethers) and `OpenSeaViemSDK` (viem) entry points.
+- Provide `OpenSeaSDK` entry points: `@opensea/sdk` for ethers and `@opensea/sdk/viem` for viem.
 - Provide the Stream API client at the `@opensea/sdk/stream` subpath.
 - Camelize API responses and expose typed helpers for orders, fulfillment, assets, and wallet auth.
 - Keep the `Chain` enum in sync with `ChainIdentifier` from `@opensea/api-types`.

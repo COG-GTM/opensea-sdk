@@ -508,27 +508,43 @@ export class PhoenixChannelsTransport implements StreamTransport {
           subscription.joined = true
           subscription.rejoinTries = 0
           this.log(`subscribed to "${subscription.topic}"`)
-          for (const callbacks of subscription.callbackList) {
-            this.safeInvoke(() => callbacks.onSubscribed?.())
-          }
+          this.notifyCallers(subscription, callbacks =>
+            callbacks.onSubscribed?.(),
+          )
         } else {
           this.log(`failed to subscribe to "${subscription.topic}"`)
           const error = new Error(
             `Subscribe to "${subscription.topic}" failed: ${status}`,
           )
-          for (const callbacks of subscription.callbackList) {
-            this.safeInvoke(() => callbacks.onSubscribeError?.(error))
-          }
+          this.notifyCallers(subscription, callbacks =>
+            callbacks.onSubscribeError?.(error),
+          )
         }
       },
       reason => {
-        for (const callbacks of subscription.callbackList) {
-          this.safeInvoke(() => callbacks.onSubscribeError?.(reason))
-        }
+        this.notifyCallers(subscription, callbacks =>
+          callbacks.onSubscribeError?.(reason),
+        )
       },
     )
 
     this.push(ref, ref, subscription.topic, PHX_JOIN, payload)
+  }
+
+  /**
+   * A callback can remove its own caller, or another one, from the list being
+   * walked. Walking the live array would then skip whichever caller shifted
+   * into the removed slot, so walk a copy and skip anyone removed meanwhile.
+   */
+  private notifyCallers(
+    subscription: PhoenixSubscription,
+    notify: (callbacks: SubscribeCallbacks) => void,
+  ): void {
+    for (const callbacks of [...subscription.callbackList]) {
+      if (subscription.callbackList.includes(callbacks)) {
+        this.safeInvoke(() => notify(callbacks))
+      }
+    }
   }
 
   /**

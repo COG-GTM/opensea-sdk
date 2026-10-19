@@ -46,6 +46,14 @@ describe("Root exports", () => {
     const { WalletAuthAPI } = await import("../src")
     expect(typeof WalletAuthAPI).toBe("function")
   })
+
+  test("exports the upload-context helpers from the ethers and viem entries", async () => {
+    for (const entry of [await import("../src"), await import("../src/viem")]) {
+      expect(typeof entry.uploadToContext).toBe("function")
+      expect(typeof entry.selectUploadContext).toBe("function")
+      expect(typeof entry.UploadContextError).toBe("function")
+    }
+  })
 })
 
 describe("Stream subpath exports", () => {

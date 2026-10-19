@@ -11,6 +11,7 @@ import type { NFTsAPI } from "../../src/api/nfts"
 import type { OffersAPI } from "../../src/api/offers"
 import type { OrdersAPI } from "../../src/api/orders"
 import type { TokensAPI } from "../../src/api/tokens"
+import type { ToolsAPI } from "../../src/api/tools"
 import type { TransactionsAPI } from "../../src/api/transactions"
 import type { WalletAuthAPI } from "../../src/api/walletAuth"
 import {
@@ -56,6 +57,7 @@ type Namespaces = {
   offers: OffersAPI
   orders: OrdersAPI
   tokens: TokensAPI
+  tools: ToolsAPI
   transactions: TransactionsAPI
   walletAuth: WalletAuthAPI
 }
@@ -88,6 +90,7 @@ describe("sub-client reachability", () => {
       "offers",
       "orders",
       "tokens",
+      "tools",
       "transactions",
       "walletAuth",
     ]

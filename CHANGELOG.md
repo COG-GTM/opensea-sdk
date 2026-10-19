@@ -1,5 +1,26 @@
 # @opensea/sdk
 
+## 12.13.0
+
+### Minor Changes
+
+- 77cf7e5: Add collection management and PFP endpoints. The SDK gains `api.collections.getCreatorFeeEnforcement(slug)`, `api.collections.getCollectionPfpProfiles(slug, args?)` and `api.collections.getTopPfpCollections(args)`, plus wallet-authenticated `api.walletAuth.getCollectionMetadata`, `createCollectionPageMediaUpload`, `setCollectionPricingCurrency`, `buildCreatorFeeEnforcementTransactions` and `refreshCollectionMetadata`. The CLI gains `opensea collections trait-floors`, `collections pfp-profiles`, `collections top-pfp`, `tokens payment-token` and `profile shelves`, with `collections.traitFloors`, `collections.pfpProfiles`, `collections.topPfp` and `tokens.paymentToken` on the programmatic client.
+- fd907e9: Add `walletAuth.listDropItems(slug, { limit?, next? })` for `GET /api/v2/drops/{slug}/items`, which returns a page of the items saved to a drop, including a draft drop that is not published yet. It needs a wallet token with `write:drops` from the collection owner or an editor, and returns camelized `DropItemsPaginatedResponse` items with a `next` cursor.
+- bcf689a: Add `api.walletAuth.getProfileShelves(address)` for `GET /api/v2/profile/shelves`, which returns the shelves a wallet shows on its public profile. It needs only an API key and sends the wallet token as well when the client has one, alongside the existing create, reorder, update and delete shelf helpers.
+- 36df83d: Add `api.tools` for the beta tool endpoints: `listTools`, `searchTools`, `getTool`, `getToolActivity` and `reportToolUsage`. `getTool` camelizes the response but returns the tool's `inputs` and `outputs` JSON Schemas with their keys as sent. Saved tools stay on `api.walletAuth`.
+- 1edbc0e: Add `uploadToContext(context, file, options?)`, `selectUploadContext(value, index?)` and `UploadContextError` for finishing the upload flows that `walletAuth.createProfileImageUpload`, `createCollectionImageUpload`, `createDropAllowlistUpload`, `createDropCollectionManifestUpload` and `createDropItemMediaUpload` start. `uploadToContext` sends a `Blob`, `ArrayBuffer` or `Uint8Array` to the context's HTTPS storage URL with the global `fetch` (multipart for POST contexts, raw body for PUT), refuses redirects, sends no OpenSea API key or wallet token, and resolves to the `{ token }` for the follow-up call. `UploadContext` is re-exported from `@opensea/api-types`.
+
+### Patch Changes
+
+- Updated dependencies [df922bd]
+  - @opensea/api-types@0.17.0
+
+## 12.12.1
+
+### Patch Changes
+
+- 208e051: Stream transport: a caller that removes its handler inside its own join callback no longer causes the next caller on the same topic to miss the join result, and a caller that subscribes from inside a join callback is told once instead of twice. `OpenSeaStreamClient` only logs from these callbacks, so its behavior is unchanged.
+
 ## 12.12.0
 
 ### Minor Changes

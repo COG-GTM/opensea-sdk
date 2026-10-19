@@ -48,8 +48,8 @@ Happy seafaring!
 
 `sdk.api` groups its methods by domain: `sdk.api.collections.getCollection(slug)`,
 `sdk.api.nfts.getNFT(...)`, `sdk.api.offers.getAllOffers(...)`, and so on across `accounts`,
-`assets`, `chains`, `drops`, `events`, `listings`, `orders`, `tokens`, `transactions` and
-`walletAuth`. Search stays flat as `sdk.api.search(args)`.
+`assets`, `chains`, `drops`, `events`, `listings`, `orders`, `tokens`, `tools` (beta),
+`transactions` and `walletAuth`. Search stays flat as `sdk.api.search(args)`.
 
 The older flat methods (`sdk.api.getCollection(slug)`) still work, carry `@deprecated` tags naming
 their replacements, and are removed in the next major. See the

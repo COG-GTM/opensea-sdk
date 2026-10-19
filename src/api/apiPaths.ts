@@ -373,6 +373,18 @@ export const getCollectionFloorPricesPath = (slug: string) => {
   return `${API_V2_PREFIX}/collections/${segment(slug)}/floor_prices`
 }
 
+export const getCreatorFeeEnforcementPath = (slug: string) => {
+  return `${API_V2_PREFIX}/collections/${segment(slug)}/creator_fee_enforcement`
+}
+
+export const getCollectionPfpProfilesPath = (slug: string) => {
+  return `${API_V2_PREFIX}/collections/${segment(slug)}/pfp-profiles`
+}
+
+export const getTopPfpCollectionsPath = () => {
+  return `${API_V2_PREFIX}/pfp/top-collections`
+}
+
 // ── Token analytics ─────────────────────────────────────────────────
 
 export const getTokenPriceHistoryPath = (chain: Chain, address: string) => {
@@ -461,4 +473,32 @@ export const getWalletTokenTransfersPath = (address: string) => {
 
 export const getProfileCollectionsPath = (address: string) => {
   return `${API_V2_PREFIX}/account/${segment(address)}/collections`
+}
+
+export const getToolsPath = () => {
+  return `${API_V2_PREFIX}/tools`
+}
+
+export const getToolsSearchPath = () => {
+  return `${API_V2_PREFIX}/tools/search`
+}
+
+export const getToolPath = (
+  registryChain: string | number,
+  registryAddr: string,
+  toolId: string | number,
+) => {
+  return `${API_V2_PREFIX}/tools/${segment(registryChain)}/${segment(registryAddr)}/${segment(toolId)}`
+}
+
+export const getToolActivityPath = (
+  registryChain: string | number,
+  registryAddr: string,
+  toolId: string | number,
+) => {
+  return `${API_V2_PREFIX}/tools/${segment(registryChain)}/${segment(registryAddr)}/${segment(toolId)}/activity`
+}
+
+export const getToolUsagePath = () => {
+  return `${API_V2_PREFIX}/tools/usage`
 }

@@ -66,6 +66,11 @@ describe("API: OrdersAPI.getOrderByHash", () => {
         collection: { slug: "boredapeyachtclub" },
         contract: { address: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d" },
       },
+      pricePerItem: {
+        currency: "WETH",
+        decimals: 18,
+        value: "5480000000000000000",
+      },
       remainingQuantity: 1,
       status: OrderStatus.ACTIVE,
     }
@@ -138,6 +143,11 @@ describe("API: OrdersAPI.getOrderByHash", () => {
           value: "1000000000000000000",
         },
       },
+      pricePerItem: {
+        currency: "ETH",
+        decimals: 18,
+        value: "1000000000000000000",
+      },
       remainingQuantity: 1,
       status: OrderStatus.ACTIVE,
     }
@@ -187,6 +197,11 @@ describe("API: OrdersAPI.getOrderByHash", () => {
         decimals: 18,
         value: "1000000000000000000",
       },
+      pricePerItem: {
+        currency: "ETH",
+        decimals: 18,
+        value: "1000000000000000000",
+      },
       remainingQuantity: 1,
       status: OrderStatus.ACTIVE,
     }
@@ -232,6 +247,11 @@ describe("API: OrdersAPI.getOrderByHash", () => {
       } as unknown as ProtocolData,
       protocolAddress: "0xprotocol",
       price: {
+        currency: "ETH",
+        decimals: 18,
+        value: "1000000000000000000",
+      },
+      pricePerItem: {
         currency: "ETH",
         decimals: 18,
         value: "1000000000000000000",

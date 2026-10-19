@@ -408,6 +408,31 @@ describe("query arg serialization", () => {
     expect(url.searchParams.getAll("franchise")).toEqual(["Pokemon"])
   })
 
+  it("sends the pfp profiles page cursor as cursor", async () => {
+    const url = await urlFor(api =>
+      api.collections.getCollectionPfpProfiles("doodles-official", {
+        limit: 20,
+        cursor: "page-2",
+      }),
+    )
+
+    expect(url.pathname).toBe(
+      "/api/v2/collections/doodles-official/pfp-profiles",
+    )
+    expect(url.searchParams.get("cursor")).toBe("page-2")
+    expect(url.searchParams.get("limit")).toBe("20")
+  })
+
+  it("sends limit and chain to the top pfp collections endpoint", async () => {
+    const url = await urlFor(api =>
+      api.collections.getTopPfpCollections({ limit: 25, chain: Chain.Base }),
+    )
+
+    expect(url.pathname).toBe("/api/v2/pfp/top-collections")
+    expect(url.searchParams.get("limit")).toBe("25")
+    expect(url.searchParams.get("chain")).toBe("base")
+  })
+
   it("omits the chain the events feed ignores", async () => {
     const url = await urlFor(api =>
       api.getEvents({ chain: "solana", limit: 5 }),

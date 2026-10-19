@@ -5,10 +5,13 @@ import {
   getCollectionHoldersPath,
   getCollectionOfferAggregatesPath,
   getCollectionPath,
+  getCollectionPfpProfilesPath,
   getCollectionStatsPath,
   getCollectionsPath,
   getCollectionTraitFloorsPath,
+  getCreatorFeeEnforcementPath,
   getTopCollectionsPath,
+  getTopPfpCollectionsPath,
   getTraitsPath,
   getTrendingCollectionsPath,
 } from "./apiPaths"
@@ -21,15 +24,20 @@ import {
   type CollectionHoldersPaginatedResponse,
   type CollectionOfferAggregatesPaginatedResponse,
   CollectionOrderByOption,
+  type CollectionPfpProfilesResponse,
+  type CreatorFeeEnforcementStatusResponse,
   type FloorPriceHistoryResponse,
+  type GetCollectionPfpProfilesArgs,
   type GetCollectionResponse,
   type GetCollectionsArgs,
   type GetCollectionsPaginatedResponse,
   type GetCollectionsResponse,
   type GetTopCollectionsArgs,
+  type GetTopPfpCollectionsArgs,
   type GetTraitsResponse,
   type GetTrendingCollectionsArgs,
   type PaginatedAnalyticsArgs,
+  type TopPfpCollectionsResponse,
   type TraitFloorsResponse,
 } from "./types"
 
@@ -194,6 +202,45 @@ export class CollectionsAPI {
   ): Promise<FloorPriceHistoryResponse> {
     return this.fetcher.get<FloorPriceHistoryResponse>(
       getCollectionFloorPricesPath(slug),
+      args,
+    )
+  }
+
+  /**
+   * Fetch whether creator fees are enforced onchain for a collection, and whether its contract
+   * supports turning enforcement on with `walletAuth.buildCreatorFeeEnforcementTransactions`.
+   */
+  async getCreatorFeeEnforcement(
+    slug: string,
+  ): Promise<CreatorFeeEnforcementStatusResponse> {
+    return this.fetcher.get<CreatorFeeEnforcementStatusResponse>(
+      getCreatorFeeEnforcementPath(slug),
+    )
+  }
+
+  /**
+   * Fetch profiles wearing a verified NFT from the collection as their profile picture. Page with
+   * the response's `next` passed back as `args.cursor`.
+   */
+  async getCollectionPfpProfiles(
+    slug: string,
+    args?: GetCollectionPfpProfilesArgs,
+  ): Promise<CollectionPfpProfilesResponse> {
+    return this.fetcher.get<CollectionPfpProfilesResponse>(
+      getCollectionPfpProfilesPath(slug),
+      args,
+    )
+  }
+
+  /**
+   * Fetch collections ranked by how many accounts wear one of their verified NFTs as a profile
+   * picture. Omit `args.chain` to rank across every chain.
+   */
+  async getTopPfpCollections(
+    args: GetTopPfpCollectionsArgs,
+  ): Promise<TopPfpCollectionsResponse> {
+    return this.fetcher.get<TopPfpCollectionsResponse>(
+      getTopPfpCollectionsPath(),
       args,
     )
   }

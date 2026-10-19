@@ -22,6 +22,7 @@ This comprehensive reference documents all OpenSea API endpoints available throu
 - [Event Endpoints](#event-endpoints)
 - [Token Endpoints](#token-endpoints)
 - [Search Endpoint](#search-endpoint)
+- [Tool Endpoints [Beta]](#tool-endpoints-beta)
 
 ---
 
@@ -36,7 +37,7 @@ const best = await sdk.api.listings.getBestListing("boredapeyachtclub", "1")
 ```
 
 The namespaces are `accounts`, `assets`, `chains`, `collections`, `drops`, `events`, `listings`,
-`nfts`, `offers`, `orders`, `tokens`, `transactions` and `walletAuth`. Search is the exception and
+`nfts`, `offers`, `orders`, `tokens`, `tools` (beta), `transactions` and `walletAuth`. Search is the exception and
 stays flat, as `sdk.api.search(args)`, because `SearchAPI`'s only method is also called `search`.
 
 The flat equivalents (`sdk.api.getCollection(...)`) still work and are deprecated for removal in the
@@ -424,6 +425,91 @@ console.log(`Brown Fur rarity: ${rarity.toFixed(2)}%`);
 - Calculate trait rarity
 - Display trait distribution charts
 - Validate trait offers
+
+---
+
+### Get Creator Fee Enforcement
+
+Check whether a collection enforces creator fees onchain today, and whether its contract supports turning enforcement on.
+
+```typescript
+const { enabled, eligible } =
+  await openseaSDK.api.collections.getCreatorFeeEnforcement("my-collection");
+```
+
+**Returns:** `CreatorFeeEnforcementStatusResponse` with `enabled` and `eligible`.
+
+---
+
+### Get Collection PFP Profiles
+
+List the profiles that wear a verified NFT from a collection as their profile picture.
+
+```typescript
+const { profiles, next } =
+  await openseaSDK.api.collections.getCollectionPfpProfiles("doodles-official", {
+    limit: 20,
+  });
+const page2 = await openseaSDK.api.collections.getCollectionPfpProfiles(
+  "doodles-official",
+  { limit: 20, cursor: next ?? undefined },
+);
+```
+
+**Parameters:** `slug` (string, required) and an optional `GetCollectionPfpProfilesArgs`: `limit` (1-100, server default 50) and `cursor` (the previous response's `next`).
+
+**Returns:** `CollectionPfpProfilesResponse` with `profiles` (address, username, display name, image, verification and the worn `nftPfp`) and `next`.
+
+---
+
+### Get Top PFP Collections
+
+Rank collections by how many accounts wear one of their verified NFTs as a profile picture.
+
+```typescript
+const { collections } = await openseaSDK.api.collections.getTopPfpCollections({
+  limit: 10,
+  chain: Chain.Base,
+});
+// collections: [{ rank: 1, pfpWearerCount: 1234, collection: { ... } }, ...]
+```
+
+**Parameters:** `GetTopPfpCollectionsArgs`: `limit` (1-50, required) and an optional `chain`. Omit `chain` to rank across every chain.
+
+**Returns:** `TopPfpCollectionsResponse` with `collections`.
+
+---
+
+### Manage a Collection
+
+Collection editors manage a collection through `api.walletAuth`, which needs an `authToken` with the `write:collections` scope (see "Wallet-authenticated API helpers" in the README).
+
+```typescript
+const page = await openseaSDK.api.walletAuth.getCollectionMetadata("my-collection");
+
+const upload = await openseaSDK.api.walletAuth.createCollectionPageMediaUpload(
+  "my-collection",
+  "hero_desktop",
+  "video/mp4",
+);
+// Upload the file to upload.url with upload.fields, then pass upload.token
+// in updateCollectionMetadata as { video: { token } }.
+
+const { workflowId } = await openseaSDK.api.walletAuth.setCollectionPricingCurrency(
+  "my-collection",
+  { useStablecoin: true },
+);
+
+const { transactions } =
+  await openseaSDK.api.walletAuth.buildCreatorFeeEnforcementTransactions("my-collection", {
+    enabled: true,
+  });
+// Send each transaction in order from its `from`, the contract owner.
+
+await openseaSDK.api.walletAuth.refreshCollectionMetadata("my-collection");
+```
+
+`getCollectionMetadata` returns the saved hero, about and overview content in the shape `updateCollectionMetadata` accepts. `createCollectionPageMediaUpload` takes a placement (`hero_desktop`, `hero_mobile`, `about_preview`, `about_section`, `overview`, `overview_background` or `team`) and the file's exact MIME type, and returns its `UploadContext` without camelizing `fields`, so the signed field names reach storage unchanged. `setCollectionPricingCurrency` returns a null `workflowId` when the collection is already priced that way, and `buildCreatorFeeEnforcementTransactions` returns an empty list when the contract is already in the requested state.
 
 ---
 
@@ -972,6 +1058,33 @@ console.log(account.profileImageUrl);
 
 ---
 
+### Get Profile Shelves
+
+Fetch the shelves a wallet shows on its public profile. An API key is enough; the wallet token is
+sent too when the client has one. The create, reorder, update and delete helpers next to it on
+`walletAuth` need a token with the `write:profile` scope.
+
+```typescript
+const shelves = await openseaSDK.api.walletAuth.getProfileShelves(
+  "0x8ba1f109551bd432803012645ac136c94c19d6e",
+);
+
+for (const shelf of shelves) {
+  console.log(shelf.title, shelf.displayOrder, shelf.items.length);
+}
+```
+
+**Parameters:**
+
+| Parameter | Type   | Required | Description    |
+| --------- | ------ | -------- | -------------- |
+| `address` | string | Yes      | Wallet address |
+
+**Returns:** an array of shelves (`ProfileShelfResponse` from `@opensea/api-types`, camelized), each
+with `id`, `title`, `displayOrder`, `items` and `shelfItemMetadata`.
+
+---
+
 ### Get Payment Token
 
 Fetch details about a payment token (ERC20) used on OpenSea.
@@ -1396,6 +1509,163 @@ results.results.forEach((result) => {
 **Returns:** `SearchResponse` containing:
 
 - `results`: Array of `SearchResult` objects, each with a `type` field and the corresponding typed object (`collection`, `token`, `nft`, or `account`)
+
+---
+
+## Upload Contexts
+
+Five `walletAuth` helpers return an `UploadContext`, a short-lived presigned storage upload, instead of taking the file themselves:
+
+| Helper | Returns |
+| --- | --- |
+| `createProfileImageUpload(body)` | `UploadContext` |
+| `createCollectionImageUpload(slug, imageType, contentType)` | `UploadContext` |
+| `createDropAllowlistUpload(slug)` | `UploadContext` |
+| `createDropCollectionManifestUpload(slug)` | `UploadContext` |
+| `createDropItemMediaUpload(slug, body)` | `UploadContext[]`, one per filename |
+
+### Upload to a Context
+
+`uploadToContext(context, file, options?)` sends the file to the context's storage URL and resolves to `{ token }`, which you pass to the follow-up call (for example `profileImageToken` in `updateProfileSettings`). It uses the global `fetch`, `FormData` and `Blob`, so it runs in browsers and in Node 22+, and it never sends your API key or wallet token to storage.
+
+```typescript
+import { uploadToContext } from "@opensea/sdk";
+
+declare const file: Blob;
+
+const context = await openseaSDK.api.walletAuth.createProfileImageUpload({
+  imageType: "profile_picture",
+  contentType: "image/png",
+});
+const { token } = await uploadToContext(context, file, { filename: "avatar.png" });
+await openseaSDK.api.walletAuth.updateProfileSettings({ profileImageToken: token });
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `context` | `UploadContext` | Yes | The context a helper above returned, unchanged |
+| `file` | `Blob \| ArrayBuffer \| Uint8Array` | Yes | The file. A browser `File` is a `Blob`; a Node `Buffer` is a `Uint8Array` |
+| `options.filename` | string | No | Filename of the multipart file part (POST contexts). Defaults to `file` |
+| `options.signal` | `AbortSignal` | No | Cancels the upload |
+
+For a POST context, every entry of `fields` is sent unchanged, then the file as the last part, named `file`. For a PUT context, the bytes are the request body and no headers are added, so a `Blob` with a `type` sets the Content-Type and raw bytes send none. The URL must be HTTPS and redirects are refused.
+
+The file goes to whatever URL the context names, and `selectUploadContext` checks shape, not origin. Pass only contexts returned by the `walletAuth` helpers above, never untrusted user-supplied JSON.
+
+**Throws:** an `Error` for a malformed or non-HTTPS context before anything is sent, and `UploadContextError` when storage answers with a non-2xx status. `UploadContextError` has only `status`, and its message is `Storage upload failed with HTTP <status>`. The response body is never read (it is cancelled on success and on failure), since storage error bodies can echo signed request material, and neither error includes the URL or the signed fields.
+
+### Select an Upload Context
+
+`selectUploadContext(value, index?)` checks that a value is an upload context and returns it. For the array `createDropItemMediaUpload` returns, pass the index of the one to use.
+
+```typescript
+import { selectUploadContext, uploadToContext } from "@opensea/sdk";
+
+declare const uploadBatchId: string;
+declare const files: File[];
+
+const contexts = await openseaSDK.api.walletAuth.createDropItemMediaUpload("my-drop", {
+  filenames: ["1.png", "2.png"],
+  uploadBatchId,
+});
+for (const [i, file] of files.entries()) {
+  await uploadToContext(selectUploadContext(contexts, i), file, { filename: file.name });
+}
+```
+
+---
+
+## Tool Endpoints [Beta]
+
+Methods on `openseaSDK.api.tools` for tools registered in the ERC-8257 tool registry and the x402 directories. These endpoints are in beta and may change without notice. A tool is identified by its registry chain ID, its registry address (an EVM address, or `x402_bazaar` / `x402_bankr` for x402 tools) and its tool ID. Each part is encoded as one path segment.
+
+Saved tools are per account and need wallet auth (`read:tools` / `write:tools`), so they live on `api.walletAuth` as `listSavedTools`, `saveTool` and `removeSavedTool`.
+
+### List Tools
+
+```typescript
+const { tools, next } = await openseaSDK.api.tools.listTools({
+  sortBy: "newest",
+  type: "nft_gated",
+  limit: 20,
+});
+```
+
+**Parameters:** an optional `ListToolsArgs`: `sortBy` (`newest` or `oldest`), `type` (access type), `source` (`onchain`, `x402_bazaar`, `x402_bankr`), `limit` (1-200) and `cursor`.
+
+**Returns:** `ListToolsResponse` with `tools` and an optional `next` cursor.
+
+---
+
+### Search Tools
+
+```typescript
+const { results } = await openseaSDK.api.tools.searchTools({
+  query: "floor price",
+  tags: ["nft", "analytics"],
+  sortBy: "most_used",
+  includeDetails: false,
+});
+```
+
+**Parameters:** an optional `SearchToolsArgs`: `query`, `registryChain`, `tags` (sent as repeated `tags` parameters), `accessType`, `creator`, `source`, `collection` (slug of a gating collection), `sortBy` (`relevance`, `newest`, `most_used`), `includeDetails` (defaults to `true` on the server), `limit` and `cursor`.
+
+**Returns:** `SearchToolsResponse` with `results` and an optional `next` cursor.
+
+---
+
+### Get Tool
+
+```typescript
+const tool = await openseaSDK.api.tools.getTool(
+  8453,
+  "0x0000000000000000000000000000000000000000",
+  42,
+);
+console.log(tool.displayName, tool.pricingRecipients);
+```
+
+**Returns:** `GetToolResponse`, including pricing recipients and access requirements. `inputs` and `outputs` are the tool's JSON Schemas and keep their wire keys, so a `wallet_address` property stays `wallet_address`. The rest of the response is camelCase.
+
+---
+
+### Get Tool Activity
+
+```typescript
+const { activity } = await openseaSDK.api.tools.getToolActivity(
+  8453,
+  "0x0000000000000000000000000000000000000000",
+  42,
+  { limit: 25, offset: 0, includeCreatorPayments: false },
+);
+```
+
+**Parameters:** the tool key and an optional `GetToolActivityArgs`: `includeCreatorPayments`, `limit` (1-100) and `offset`.
+
+**Returns:** `GetToolActivityResponse` with `activity`: x402 payment events and usage reports, deduplicated by transaction hash, each with an `attribution` confidence level.
+
+---
+
+### Report Tool Usage
+
+Report a verified tool invocation for metrics. This does not trigger any onchain transaction. Identify the tool with `toolChainId`, `toolRegistryAddress` and `toolOnchainId`, or with `toolEndpoint` alone. Tool authors who report from their server can use the reporters in `@opensea/tool-sdk` instead.
+
+```typescript
+const { id, verified } = await openseaSDK.api.tools.reportToolUsage({
+  verificationType: "x402_settlement",
+  toolChainId: 8453,
+  toolRegistryAddress: "0x0000000000000000000000000000000000000000",
+  toolOnchainId: 42,
+  latencyMs: 180,
+  x402: { callerAddress: "0x...", txHash: "0x...", chainId: 8453 },
+});
+```
+
+**Parameters:** `ReportToolUsageRequest`. `verificationType` is `eip3009_authorization` (free tools, with an `eip3009` proof) or `x402_settlement` (paid tools, with an `x402` settlement).
+
+**Returns:** `ReportToolUsageResponse` with `id`, `verified` and `verificationType`.
 
 ---
 

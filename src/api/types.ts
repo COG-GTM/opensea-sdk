@@ -4,7 +4,9 @@ import type {
   AgentProfileRelationshipsResponse as ApiAgentProfileRelationshipsResponse,
   BuildOfferResponse as ApiBuildOfferResponse,
   CancelResponse as ApiCancelResponse,
+  CollectionPfpProfilesResponse as ApiCollectionPfpProfilesResponse,
   CollectionSearchResponse as ApiCollectionSearchResponse,
+  CreatorFeeEnforcementStatusResponse as ApiCreatorFeeEnforcementStatusResponse,
   DropMintRequest as ApiDropMintRequest,
   DropMintResponse as ApiDropMintResponse,
   Listing as ApiListing,
@@ -28,6 +30,7 @@ import type {
   TokenDetailedResponse as ApiTokenDetailedResponse,
   TokenResponse as ApiTokenResponse,
   TokenSearchResponse as ApiTokenSearchResponse,
+  TopPfpCollectionsResponse as ApiTopPfpCollectionsResponse,
   Trait as ApiTrait,
   TraitFloorResponse as ApiTraitFloorResponse,
   TraitFloorsResponse as ApiTraitFloorsResponse,
@@ -49,7 +52,9 @@ import type {
   NftListResponse,
   NftResponse,
   OffersResponse,
+  OperationQueryParams,
   paths,
+  RegisteredToolResponse,
   StandardizedNft,
   StandardizedNftFacetsResponse,
   StandardizedNftListResponse,
@@ -59,6 +64,11 @@ import type {
   TokenGroupPaginatedResponse,
   TokenGroupResponse,
   TokenPaginatedResponse,
+  ToolActivityPaginatedResponse,
+  ToolListPaginatedResponse,
+  ToolSearchPaginatedResponse,
+  ToolUsageRequest,
+  ToolUsageResponse,
 } from "@opensea/api-types"
 import type { OrderType, ProtocolData } from "../orders/types"
 import type { OpenSeaCollection } from "../types"
@@ -1308,6 +1318,44 @@ export type TraitFloor = Camelize<ApiTraitFloorResponse>
  * @category API Response Types
  */
 export type TraitFloorsResponse = Camelize<ApiTraitFloorsResponse>
+
+/**
+ * Whether a collection enforces creator fees onchain, and whether its contract supports turning
+ * enforcement on.
+ * @category API Response Types
+ */
+export type CreatorFeeEnforcementStatusResponse =
+  Camelize<ApiCreatorFeeEnforcementStatusResponse>
+
+/**
+ * Query args for `GET /api/v2/collections/{slug}/pfp-profiles`, derived from the spec.
+ * @category API Query Args
+ */
+export type GetCollectionPfpProfilesArgs = Camelize<
+  OperationQueryParams<"get_collection_pfp_profiles">
+>
+
+/**
+ * Profiles wearing a verified NFT from a collection as their profile picture.
+ * @category API Response Types
+ */
+export type CollectionPfpProfilesResponse =
+  Camelize<ApiCollectionPfpProfilesResponse>
+
+/**
+ * Query args for `GET /api/v2/pfp/top-collections`, derived from the spec. `limit` (1-50) is
+ * required.
+ * @category API Query Args
+ */
+export type GetTopPfpCollectionsArgs = Camelize<
+  OperationQueryParams<"get_top_pfp_collections">
+>
+
+/**
+ * Collections ranked by verified NFT profile-picture wearer count.
+ * @category API Response Types
+ */
+export type TopPfpCollectionsResponse = Camelize<ApiTopPfpCollectionsResponse>
 export type CreateOfferActionsResponse = Camelize<ApiCreateOfferActionsResponse>
 export type CreateOfferFulfillmentActionsResponse =
   Camelize<ApiFulfillmentActionsResponse>
@@ -1671,3 +1719,68 @@ export type ProfileListingsResponse = Camelize<ListingsResponse>
  * @category API Response Types
  */
 export type ProfileOffersResponse = Camelize<OffersResponse>
+
+/**
+ * Query args for `GET /api/v2/tools`. Derived from the spec. Beta: the endpoint may change
+ * without notice.
+ * @category API Query Args
+ */
+export type ListToolsArgs = Camelize<OperationQueryParams<"list_tools">>
+
+/**
+ * Query args for `GET /api/v2/tools/search`. Derived from the spec. Beta: the endpoint may change
+ * without notice.
+ * @category API Query Args
+ */
+export type SearchToolsArgs = Camelize<OperationQueryParams<"search_tools">>
+
+/**
+ * Query args for `GET /api/v2/tools/{registry_chain}/{registry_addr}/{tool_id}/activity`.
+ * Derived from the spec. Beta: the endpoint may change without notice.
+ * @category API Query Args
+ */
+export type GetToolActivityArgs = Camelize<
+  OperationQueryParams<"get_tool_activity">
+>
+
+/**
+ * Body for `POST /api/v2/tools/usage`. Identify the tool by `toolChainId`, `toolRegistryAddress`
+ * and `toolOnchainId`, or by `toolEndpoint` alone. Beta: the endpoint may change without notice.
+ * @category API Models
+ */
+export type ReportToolUsageRequest = Camelize<ToolUsageRequest>
+
+/**
+ * Response from `POST /api/v2/tools/usage`. Beta.
+ * @category API Response Types
+ */
+export type ReportToolUsageResponse = Camelize<ToolUsageResponse>
+
+/**
+ * Response from `GET /api/v2/tools`. Beta.
+ * @category API Response Types
+ */
+export type ListToolsResponse = Camelize<ToolListPaginatedResponse>
+
+/**
+ * Response from `GET /api/v2/tools/search`. Beta.
+ * @category API Response Types
+ */
+export type SearchToolsResponse = Camelize<ToolSearchPaginatedResponse>
+
+/**
+ * A registered tool. `inputs` and `outputs` are the tool's own JSON Schemas and keep their
+ * wire keys; every other field is camelized. Beta.
+ * @category API Response Types
+ */
+export type GetToolResponse = Omit<
+  Camelize<RegisteredToolResponse>,
+  "inputs" | "outputs"
+> &
+  Pick<RegisteredToolResponse, "inputs" | "outputs">
+
+/**
+ * Response from the tool activity endpoint. Beta.
+ * @category API Response Types
+ */
+export type GetToolActivityResponse = Camelize<ToolActivityPaginatedResponse>

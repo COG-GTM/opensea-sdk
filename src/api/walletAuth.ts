@@ -190,6 +190,17 @@ export class WalletAuthAPI {
     )
   }
 
+  /**
+   * The drop's saved items, including a draft's, one page at a time. Only the
+   * collection owner or an authorized editor can list them.
+   */
+  listDropItems(slug: string, query?: WalletAuthQuery<"list_drop_items">) {
+    return this.fetcher.get<OperationResponse<"list_drop_items">>(
+      `/api/v2/drops/${segment(slug)}/items`,
+      query,
+    )
+  }
+
   saveSelfMintDropItem(
     slug: string,
     body: WalletAuthRequest<"save_self_mint_drop_item">,
@@ -410,6 +421,68 @@ export class WalletAuthAPI {
   }
 
   /**
+   * `placement` is one of hero_desktop, hero_mobile, about_preview,
+   * about_section, overview, overview_background or team. The response is not
+   * camelized, for the `UploadContext.fields` reason on
+   * `createCollectionImageUpload`.
+   */
+  createCollectionPageMediaUpload(
+    slug: string,
+    placement: string,
+    contentType: WalletAuthQuery<"upload_collection_page_media">["contentType"],
+  ) {
+    const query = new URLSearchParams({ content_type: contentType })
+    return this.fetcher.request<
+      OperationResponse<"upload_collection_page_media">
+    >(
+      "POST",
+      `/api/v2/collections/${segment(slug)}/media/${segment(placement)}?${query}`,
+      undefined,
+      undefined,
+      { camelizeResponse: false },
+    )
+  }
+
+  getCollectionMetadata(slug: string) {
+    return this.fetcher.get<OperationResponse<"get_collection_metadata">>(
+      `/api/v2/collections/${segment(slug)}/metadata`,
+    )
+  }
+
+  setCollectionPricingCurrency(
+    slug: string,
+    body: WalletAuthRequest<"set_collection_pricing_currency">,
+  ) {
+    return this.fetcher.request<
+      OperationResponse<"set_collection_pricing_currency">
+    >("POST", `/api/v2/collections/${segment(slug)}/pricing_currency`, body)
+  }
+
+  /**
+   * Send the returned transactions in order from each one's `from`, the
+   * contract's onchain owner. The list is empty when the contract is already
+   * in the requested state.
+   */
+  buildCreatorFeeEnforcementTransactions(
+    slug: string,
+    body: WalletAuthRequest<"build_creator_fee_enforcement_transactions">,
+  ) {
+    return this.fetcher.request<
+      OperationResponse<"build_creator_fee_enforcement_transactions">
+    >(
+      "POST",
+      `/api/v2/collections/${segment(slug)}/creator_fee_enforcement`,
+      body,
+    )
+  }
+
+  refreshCollectionMetadata(slug: string) {
+    return this.fetcher.request<
+      OperationResponse<"refresh_collection_metadata">
+    >("POST", `/api/v2/collections/${segment(slug)}/refresh`)
+  }
+
+  /**
    * `UpdateProfileSettingsRequest` is camelCase on the wire (`displayName`,
    * `externalUrl`, `profileImageToken`, `bannerImageToken`), so the body is sent
    * verbatim. Snake-casing it silently drops every field except `bio`, which
@@ -469,6 +542,17 @@ export class WalletAuthAPI {
     return this.fetcher.request<OperationResponse<"clear_profile_nft_pfp">>(
       "DELETE",
       "/api/v2/profile/nft-pfp",
+    )
+  }
+
+  /**
+   * Public read: an API key alone is enough, and the wallet token is sent only
+   * when one is configured.
+   */
+  getProfileShelves(address: string) {
+    return this.fetcher.get<OperationResponse<"get_profile_shelves">>(
+      "/api/v2/profile/shelves",
+      { address },
     )
   }
 

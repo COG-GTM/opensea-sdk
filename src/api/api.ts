@@ -34,6 +34,7 @@ import { OffersAPI } from "./offers"
 import { OrdersAPI } from "./orders"
 import { SearchAPI } from "./search"
 import { TokensAPI } from "./tokens"
+import { ToolsAPI } from "./tools"
 import { TransactionsAPI } from "./transactions"
 import {
   type AgentProfileRelationshipsResponse,
@@ -212,6 +213,8 @@ export class OpenSeaAPI {
   public readonly drops: DropsAPI
   public readonly transactions: TransactionsAPI
   public readonly assets: AssetsAPI
+  /** Tool registry endpoints. Beta: they may change without notice. */
+  public readonly tools: ToolsAPI
   /** Wallet-authenticated scoped REST helpers. */
   public readonly walletAuth: WalletAuthAPI
 
@@ -261,6 +264,7 @@ export class OpenSeaAPI {
     this.drops = new DropsAPI(fetcher)
     this.transactions = new TransactionsAPI(fetcher)
     this.assets = new AssetsAPI(fetcher)
+    this.tools = new ToolsAPI(fetcher)
     this.walletAuth = new WalletAuthAPI(fetcher)
   }
 

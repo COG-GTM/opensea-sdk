@@ -2,9 +2,11 @@ import { describe, expect, test, vi } from "vitest"
 import { CollectionsAPI } from "../../src/api/collections"
 import {
   CollectionOrderByOption,
+  type CollectionPfpProfilesResponse,
   type GetCollectionResponse,
   type GetCollectionsResponse,
   type GetTraitsResponse,
+  type TopPfpCollectionsResponse,
   type TraitFloorsResponse,
 } from "../../src/api/types"
 import {
@@ -59,6 +61,78 @@ describe("API: CollectionsAPI", () => {
       await collectionsAPI.getCollectionTraitFloors("a/b")
 
       expect(mockGet).toHaveBeenCalledWith("/api/v2/traits/a%2Fb/floors")
+    })
+  })
+
+  describe("getCreatorFeeEnforcement", () => {
+    test("reads the enforcement state for an encoded slug", async () => {
+      mockGet.mockResolvedValue({ enabled: false, eligible: true })
+
+      const result = await collectionsAPI.getCreatorFeeEnforcement("a/b")
+
+      expect(mockGet).toHaveBeenCalledWith(
+        "/api/v2/collections/a%2Fb/creator_fee_enforcement",
+      )
+      expect(result).toEqual({ enabled: false, eligible: true })
+    })
+  })
+
+  describe("getCollectionPfpProfiles", () => {
+    test("pages the pfp profiles of an encoded slug", async () => {
+      const mockResponse: CollectionPfpProfilesResponse = {
+        profiles: [
+          {
+            address: "0xabc",
+            isVerified: true,
+            nftPfp:
+              {} as CollectionPfpProfilesResponse["profiles"][number]["nftPfp"],
+          },
+        ],
+        next: "cursor-2",
+      }
+      mockGet.mockResolvedValue(mockResponse)
+
+      const result = await collectionsAPI.getCollectionPfpProfiles("a/b", {
+        limit: 5,
+        cursor: "cursor-1",
+      })
+
+      expect(mockGet).toHaveBeenCalledWith(
+        "/api/v2/collections/a%2Fb/pfp-profiles",
+        { limit: 5, cursor: "cursor-1" },
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    test("sends no query args when called without them", async () => {
+      mockGet.mockResolvedValue({ profiles: [] })
+
+      await collectionsAPI.getCollectionPfpProfiles("doodles-official")
+
+      expect(mockGet).toHaveBeenCalledWith(
+        "/api/v2/collections/doodles-official/pfp-profiles",
+        undefined,
+      )
+    })
+  })
+
+  describe("getTopPfpCollections", () => {
+    test("ranks collections with the limit and chain", async () => {
+      const mockResponse = {
+        collections: [{ rank: 1, pfpWearerCount: 42 }],
+      } as unknown as TopPfpCollectionsResponse
+      mockGet.mockResolvedValue(mockResponse)
+
+      const result = await collectionsAPI.getTopPfpCollections({
+        limit: 10,
+        chain: Chain.Base,
+      })
+
+      expect(mockGet).toHaveBeenCalledWith("/api/v2/pfp/top-collections", {
+        limit: 10,
+        chain: "base",
+      })
+      expect(result).toEqual(mockResponse)
     })
   })
 

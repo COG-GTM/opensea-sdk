@@ -14,6 +14,11 @@ export const mockOffer: Offer = {
     decimals: 18,
     value: "1500000000000000000",
   },
+  pricePerItem: {
+    currency: "WETH",
+    decimals: 18,
+    value: "1500000000000000000",
+  },
   remainingQuantity: 1,
   status: OrderStatus.ACTIVE,
 }
