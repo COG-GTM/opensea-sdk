@@ -1,5 +1,11 @@
 # @opensea/sdk
 
+## 12.13.1
+
+### Patch Changes
+
+- 58234c4: Update the README banner to the new OpenSea brand, and use the new brand blue on the CLI's login result page.
+
 ## 12.13.0
 
 ### Minor Changes
