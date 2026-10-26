@@ -133,14 +133,19 @@ function sumMaxAmounts(items: Item[]): bigint {
   return total
 }
 
-/** Sum of each item's smaller amount, the least it can cost during the auction. */
-function sumMinAmounts(items: Item[]): bigint {
-  let total = 0n
+/**
+ * Lowest combined price of items that Seaport interpolates together. The total
+ * is linear in time, so it is lowest at the start or end; Seaport rounds
+ * consideration up, so it never charges less than this.
+ */
+function lowestTotal(items: Item[]): bigint {
+  let start = 0n
+  let end = 0n
   for (const item of items) {
-    const { startAmount, endAmount } = item
-    total += startAmount < endAmount ? startAmount : endAmount
+    start += item.startAmount
+    end += item.endAmount
   }
-  return total
+  return start < end ? start : end
 }
 
 function isNativeItem(item: Item): boolean {
@@ -550,7 +555,7 @@ export function requireCallMatchesOrder(
       const inCurrency = (item: ConsiderationItem) =>
         item.itemType === currency.itemType &&
         sameAddress(item.token, currency.token)
-      const price = sumMinAmounts(order.consideration.filter(inCurrency))
+      const price = lowestTotal(order.consideration.filter(inCurrency))
       const fees = sumMaxAmounts(order.tips.filter(inCurrency))
       const cap = (price * MAX_OPTIONAL_FEE_BPS) / 10000n
       if (fees > cap) {

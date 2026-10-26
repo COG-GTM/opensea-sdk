@@ -807,6 +807,40 @@ describe("SDK: FulfillmentManager", () => {
       )
     })
 
+    test("accepts optional fees within the cap of offsetting auctions", async () => {
+      // One item falls 100 -> 50 while another rises 0 -> 50, so the total
+      // stays 100 and a fee of 10 is within 10% throughout.
+      const item = (start: string, end: string) => ({
+        itemType: 0,
+        token: ZERO_ADDRESS,
+        identifierOrCriteria: "0",
+        startAmount: start,
+        endAmount: end,
+        recipient: SELLER,
+      })
+      respondWith(
+        advancedOrderTransaction({
+          value: "110",
+          parameters: nativeListingParameters({
+            consideration: [
+              item("100", "50"),
+              item("0", "50"),
+              item("10", "10"),
+            ],
+            totalOriginalConsiderationItems: "2",
+          }),
+        }),
+      )
+
+      await fulfillmentManager.fulfillOrder({
+        order: orderFor(mockOrderV2),
+        accountAddress: BUYER,
+        includeOptionalCreatorFees: true,
+      })
+
+      expect(mockSigner.sendTransaction).toHaveBeenCalledTimes(1)
+    })
+
     test.each(["to", "data", "value"])("overrides set %s", async (field) => {
       await expectRejected(
         advancedOrderTransaction(),
