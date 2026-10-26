@@ -133,6 +133,16 @@ function sumMaxAmounts(items: Item[]): bigint {
   return total
 }
 
+/** Sum of each item's smaller amount, the least it can cost during the auction. */
+function sumMinAmounts(items: Item[]): bigint {
+  let total = 0n
+  for (const item of items) {
+    const { startAmount, endAmount } = item
+    total += startAmount < endAmount ? startAmount : endAmount
+  }
+  return total
+}
+
 function isNativeItem(item: Item): boolean {
   return item.itemType === ITEM_TYPE_NATIVE
 }
@@ -534,12 +544,13 @@ export function requireCallMatchesOrder(
         )
       }
     }
-    // The hash does not cover tips, so cap them against the signed price.
+    // The hash does not cover tips, so cap them against the lowest price the
+    // order can reach, which is what the buyer pays at the end of an auction.
     for (const currency of paymentItems) {
       const inCurrency = (item: ConsiderationItem) =>
         item.itemType === currency.itemType &&
         sameAddress(item.token, currency.token)
-      const price = sumMaxAmounts(order.consideration.filter(inCurrency))
+      const price = sumMinAmounts(order.consideration.filter(inCurrency))
       const fees = sumMaxAmounts(order.tips.filter(inCurrency))
       const cap = (price * MAX_OPTIONAL_FEE_BPS) / 10000n
       if (fees > cap) {

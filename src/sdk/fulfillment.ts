@@ -131,7 +131,8 @@ export class FulfillmentManager {
    * `fulfillBasicOrder`, `fulfillOrder` or `fulfillAdvancedOrder`, fills an
    * order whose hash is not `order.orderHash`, or sends more native value than
    * the order costs. Nothing is sent in that case.
-   * @throws Error if `overrides` sets `to`, `data` or `value`.
+   * @throws Error if `overrides` sets `to`, `data` or `value` (except for
+   * private listings, which compute their own value).
    */
   async fulfillOrder({
     order,
@@ -153,17 +154,6 @@ export class FulfillmentManager {
     overrides?: Record<string, unknown>
   }): Promise<string> {
     await this.context.requireAccountIsAvailable(accountAddress)
-
-    // Overrides are spread after the validated fields, so they must not be able
-    // to replace them.
-    const overridden = ["to", "data", "value"].filter(
-      (field) => overrides?.[field] !== undefined,
-    )
-    if (overridden.length > 0) {
-      throw new Error(
-        `overrides cannot set ${overridden.join(", ")}; fulfillOrder derives them from the validated order`,
-      )
-    }
 
     const protocolAddress = order.protocolAddress
     if (!protocolAddress) {
@@ -187,6 +177,17 @@ export class FulfillmentManager {
         accountAddress,
         overrides,
       })
+    }
+
+    // Overrides are spread after the validated fields, so they must not be able
+    // to replace them.
+    const overridden = ["to", "data", "value"].filter(
+      (field) => overrides?.[field] !== undefined,
+    )
+    if (overridden.length > 0) {
+      throw new Error(
+        `overrides cannot set ${overridden.join(", ")}; fulfillOrder derives them from the validated order`,
+      )
     }
 
     // Get fulfillment data from the API
