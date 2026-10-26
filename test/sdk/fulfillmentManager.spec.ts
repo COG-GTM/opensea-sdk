@@ -54,8 +54,8 @@ const ADVANCED_ORDER_PARAMETERS = {
       itemType: 3,
       token: "0x88d381e3c65221abea498c69e990d1deb7bd3863",
       identifierOrCriteria: "1",
-      startAmount: "10000",
-      endAmount: "10000",
+      startAmount: "1",
+      endAmount: "1",
     },
   ],
   consideration: [
@@ -1056,7 +1056,7 @@ describe("SDK: FulfillmentManager", () => {
           },
         ),
       )
-      await expectRejected(/criteria resolver/, {
+      await expectRejected(/does not point at a criteria item/, {
         order: offerOrder,
         accountAddress: "0xSeller",
         assetContractAddress: "0x88d381e3c65221abea498c69e990d1deb7bd3863",
@@ -1078,6 +1078,233 @@ describe("SDK: FulfillmentManager", () => {
 
       expect(mockSeaport.getCounter).toHaveBeenCalledWith(SELLER_ADDRESS)
       expect(mockSigner.sendTransaction).toHaveBeenCalledTimes(1)
+    })
+
+    function advancedOrderWith(
+      parameters: Record<string, unknown>,
+      fraction: { numerator: number; denominator: number } = {
+        numerator: 1,
+        denominator: 1,
+      },
+    ) {
+      return {
+        advancedOrder: {
+          parameters,
+          ...fraction,
+          signature: "0x",
+          extraData: "0x",
+        },
+      }
+    }
+
+    describe("partial fills", () => {
+      const TEN_UNITS = {
+        ...ADVANCED_ORDER_PARAMETERS,
+        offer: [
+          {
+            ...ADVANCED_ORDER_PARAMETERS.offer[0],
+            startAmount: "10",
+            endAmount: "10",
+          },
+        ],
+        consideration: [
+          {
+            ...ADVANCED_ORDER_PARAMETERS.consideration[0],
+            startAmount: "1000",
+            endAmount: "1000",
+          },
+        ],
+      }
+      const tenUnitOrder = {
+        ...listingOrder,
+        orderHash: orderHashOf(TEN_UNITS),
+      }
+
+      test("sends a fill of the requested units at their share of the price", async () => {
+        respondWith(
+          advancedTransaction(
+            { value: "200" },
+            advancedOrderWith(TEN_UNITS, { numerator: 2, denominator: 10 }),
+          ),
+        )
+        await fulfillmentManager.fulfillOrder({
+          order: tenUnitOrder,
+          accountAddress: "0xBuyer",
+          unitsToFill: 2,
+        })
+        expect(mockSigner.sendTransaction.mock.calls[0][0].value).toBe(200n)
+      })
+
+      test("rejects a fill of more units than requested", async () => {
+        respondWith(
+          advancedTransaction(
+            { value: "500" },
+            advancedOrderWith(TEN_UNITS, { numerator: 5, denominator: 10 }),
+          ),
+        )
+        await expectRejected(/more than the 2 requested/, {
+          order: tenUnitOrder,
+          unitsToFill: 2,
+        })
+      })
+
+      test("rejects a value above the filled share of the price", async () => {
+        respondWith(
+          advancedTransaction(
+            { value: "201" },
+            advancedOrderWith(TEN_UNITS, { numerator: 2, denominator: 10 }),
+          ),
+        )
+        await expectRejected(/exceeds the order's native price 200/, {
+          order: tenUnitOrder,
+          unitsToFill: 2,
+        })
+      })
+    })
+
+    describe("optional creator fees", () => {
+      const CREATOR = "0x000000000000000000000000000000000000c0de"
+      const withTip = (tip: Record<string, unknown>) =>
+        advancedOrderWith({
+          ...ADVANCED_ORDER_PARAMETERS,
+          consideration: [
+            ...ADVANCED_ORDER_PARAMETERS.consideration,
+            { identifierOrCriteria: "0", recipient: CREATOR, ...tip },
+          ],
+        })
+      const nativeTip = (amount: string) => ({
+        itemType: 0,
+        token: ZERO_ADDRESS,
+        startAmount: amount,
+        endAmount: amount,
+      })
+
+      test("sends a native tip within the cap", async () => {
+        respondWith(
+          advancedTransaction(
+            { value: "108900000" },
+            withTip(nativeTip("9900000")),
+          ),
+        )
+        await fulfillmentManager.fulfillOrder({
+          order: listingOrder,
+          accountAddress: "0xBuyer",
+          includeOptionalCreatorFees: true,
+        })
+        expect(mockSigner.sendTransaction.mock.calls[0][0].value).toBe(
+          108900000n,
+        )
+      })
+
+      test("rejects a native tip above the cap", async () => {
+        respondWith(
+          advancedTransaction(
+            { value: "108900001" },
+            withTip(nativeTip("9900001")),
+          ),
+        )
+        await expectRejected(/exceed the cap of 9900000/, {
+          includeOptionalCreatorFees: true,
+        })
+      })
+
+      test("rejects an ERC20 tip on a native-priced order", async () => {
+        respondWith(
+          advancedTransaction(
+            {},
+            withTip({
+              itemType: 1,
+              token: "0x1234567890123456789012345678901234567890",
+              startAmount: "1",
+              endAmount: "1",
+            }),
+          ),
+        )
+        await expectRejected(/not in the order's payment currency/, {
+          includeOptionalCreatorFees: true,
+        })
+      })
+    })
+
+    describe("criteria offers", () => {
+      const COLLECTION = "0x88d381e3c65221abea498c69e990d1deb7bd3863"
+      const OTHER_COLLECTION = "0x00000000000000000000000000000000000b0b00"
+      const CRITERIA_OFFER = {
+        ...ADVANCED_ORDER_PARAMETERS,
+        offer: [
+          {
+            itemType: 1,
+            token: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            identifierOrCriteria: "0",
+            startAmount: "1000",
+            endAmount: "1000",
+          },
+        ],
+        consideration: [
+          {
+            itemType: 4,
+            token: COLLECTION,
+            identifierOrCriteria: "0",
+            startAmount: "1",
+            endAmount: "1",
+            recipient: SELLER_ADDRESS,
+          },
+        ],
+      }
+      const criteriaOrder = {
+        ...offerOrder,
+        orderHash: orderHashOf(CRITERIA_OFFER),
+      }
+      const resolver = {
+        orderIndex: 0,
+        side: 1,
+        index: 0,
+        identifier: "7",
+        criteriaProof: [],
+      }
+
+      function respondWithCriteriaFill() {
+        respondWith(
+          advancedTransaction(
+            { value: "0" },
+            {
+              ...advancedOrderWith(CRITERIA_OFFER),
+              criteriaResolvers: [resolver],
+            },
+          ),
+        )
+      }
+
+      test("sends a fill of the requested token on the requested contract", async () => {
+        respondWithCriteriaFill()
+        await fulfillmentManager.fulfillOrder({
+          order: criteriaOrder,
+          accountAddress: "0xNftHolder",
+          assetContractAddress: COLLECTION,
+          tokenId: "7",
+        })
+        expect(mockSigner.sendTransaction).toHaveBeenCalledTimes(1)
+      })
+
+      test("rejects a resolver on a contract other than assetContractAddress", async () => {
+        respondWithCriteriaFill()
+        await expectRejected(/not 0x00000000000000000000000000000000000b0b00/, {
+          order: criteriaOrder,
+          accountAddress: "0xNftHolder",
+          assetContractAddress: OTHER_COLLECTION,
+          tokenId: "7",
+        })
+      })
+
+      test("rejects a resolver for a different token", async () => {
+        respondWithCriteriaFill()
+        await expectRejected(/identifier does not match token 8/, {
+          order: criteriaOrder,
+          accountAddress: "0xNftHolder",
+          assetContractAddress: COLLECTION,
+          tokenId: "8",
+        })
+      })
     })
 
     describe("basic orders", () => {

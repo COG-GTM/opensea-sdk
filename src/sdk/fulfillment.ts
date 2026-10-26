@@ -16,7 +16,10 @@ import {
   maxNativePayment,
   parseFulfillmentCall,
   rejectFulfillmentData,
+  requireCriteriaResolversMatch,
+  requireFillWithinUnits,
   requireFulfillmentTarget,
+  requireTipsWithinCap,
   toOrderComponents,
 } from "../orders/fulfillmentValidation"
 import {
@@ -24,7 +27,11 @@ import {
   constructPrivateListingCounterOrder,
   getPrivateListingFulfillments,
 } from "../orders/privateListings"
-import { OrderType, type OrderV2 } from "../orders/types"
+import {
+  type FulfillmentDataResponse,
+  OrderType,
+  type OrderV2,
+} from "../orders/types"
 import { DEFAULT_SEAPORT_CONTRACT_ADDRESS } from "../orders/utils"
 import {
   type Amount,
@@ -209,6 +216,8 @@ export class FulfillmentManager {
         accountAddress,
         recipientAddress,
         tokenId,
+        assetContractAddress,
+        unitsToFill: BigInt(unitsToFillStr),
         includeOptionalCreatorFees,
       })
 
@@ -259,12 +268,7 @@ export class FulfillmentManager {
    * the caller (or their chosen recipient).
    */
   private async requireFulfillmentMatchesOrder(
-    transaction: {
-      to: string
-      value: unknown
-      function: string
-      inputData: unknown
-    },
+    transaction: FulfillmentDataResponse["fulfillmentData"]["transaction"],
     {
       order,
       orderHash,
@@ -272,6 +276,8 @@ export class FulfillmentManager {
       accountAddress,
       recipientAddress,
       tokenId,
+      assetContractAddress,
+      unitsToFill,
       includeOptionalCreatorFees,
     }: {
       order: OrderV2 | Order | Listing | Offer
@@ -280,6 +286,8 @@ export class FulfillmentManager {
       accountAddress: string
       recipientAddress?: string
       tokenId?: string
+      assetContractAddress?: string
+      unitsToFill: bigint
       includeOptionalCreatorFees: boolean
     },
   ): Promise<{ functionName: string; params: unknown[]; value: bigint }> {
@@ -306,20 +314,18 @@ export class FulfillmentManager {
       )
     }
 
-    if (tokenId !== undefined) {
-      for (const resolver of parsed.criteriaResolvers) {
-        const identifier = (resolver as { identifier?: unknown })?.identifier
-        if (
-          identifier === undefined ||
-          identifier === null ||
-          BigInt(identifier as string) !== BigInt(tokenId)
-        ) {
-          rejectFulfillmentData(
-            `criteria resolver identifier does not match token ${tokenId}`,
-          )
-        }
-      }
-    }
+    requireCriteriaResolversMatch(
+      orderParameters,
+      parsed.criteriaResolvers,
+      tokenId,
+      assetContractAddress,
+    )
+    requireFillWithinUnits(
+      orderParameters,
+      parsed.numerator,
+      parsed.denominator,
+      unitsToFill,
+    )
 
     const tipCount =
       orderParameters.consideration.length -
@@ -332,6 +338,7 @@ export class FulfillmentManager {
         "consideration items were appended to the signed order",
       )
     }
+    requireTipsWithinCap(orderParameters)
 
     const seaport = getSeaportInstance(protocolAddress, this.context.seaport)
     const counter =
@@ -355,6 +362,8 @@ export class FulfillmentManager {
     const maxValue = maxNativePayment(
       orderParameters,
       includeOptionalCreatorFees,
+      parsed.numerator,
+      parsed.denominator,
     )
     if (value < 0n || value > maxValue) {
       rejectFulfillmentData(

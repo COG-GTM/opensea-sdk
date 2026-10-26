@@ -19,6 +19,8 @@ const ItemType = {
   ERC20: 1,
   ERC721: 2,
   ERC1155: 3,
+  ERC721_WITH_CRITERIA: 4,
+  ERC1155_WITH_CRITERIA: 5,
 } as const
 
 /** The Seaport fulfill functions the API may name, mapped to their ABI name. */
@@ -64,6 +66,9 @@ export type ParsedFulfillmentCall = {
   recipient?: string
   /** `criteriaResolvers` argument of `fulfillAdvancedOrder`. */
   criteriaResolvers: unknown[]
+  /** Fraction of the order filled; 1/1 for everything but `fulfillAdvancedOrder`. */
+  numerator: bigint
+  denominator: bigint
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -306,6 +311,11 @@ export function parseFulfillmentCall(
       fail("criteriaResolvers is not an array")
     }
     const recipient = toStringField(inputData.recipient, "recipient")
+    const numerator = toBigIntStrict(advancedOrder.numerator, "numerator")
+    const denominator = toBigIntStrict(advancedOrder.denominator, "denominator")
+    if (numerator === 0n || numerator > denominator) {
+      fail("advancedOrder fraction is out of range")
+    }
     return {
       functionName,
       params: [
@@ -317,6 +327,8 @@ export function parseFulfillmentCall(
       orderParameters: parseOrderParameters(advancedOrder.parameters),
       recipient,
       criteriaResolvers,
+      numerator,
+      denominator,
     }
   }
 
@@ -330,6 +342,8 @@ export function parseFulfillmentCall(
       params: [order, fulfillerConduitKey],
       orderParameters: parseOrderParameters(order.parameters),
       criteriaResolvers: [],
+      numerator: 1n,
+      denominator: 1n,
     }
   }
 
@@ -338,6 +352,8 @@ export function parseFulfillmentCall(
     params: [inputData.parameters],
     orderParameters: basicOrderToOrderParameters(inputData.parameters),
     criteriaResolvers: [],
+    numerator: 1n,
+    denominator: 1n,
   }
 }
 
@@ -378,13 +394,16 @@ export function toOrderComponents(
 }
 
 /**
- * Upper bound on the native currency the fulfiller pays: every native
- * consideration item at the larger of its start and end amounts. Tips (items
- * past `totalOriginalConsiderationItems`) count only when `includeTips` is set.
+ * Upper bound on the native currency the fulfiller pays for the filled
+ * fraction: every native consideration item at the larger of its start and end
+ * amounts, scaled by `numerator / denominator` and rounded up. Tips (items past
+ * `totalOriginalConsiderationItems`) count only when `includeTips` is set.
  */
 export function maxNativePayment(
   parameters: FulfilledOrderParameters,
   includeTips: boolean,
+  numerator = 1n,
+  denominator = 1n,
 ): bigint {
   const items = includeTips
     ? parameters.consideration
@@ -394,14 +413,158 @@ export function maxNativePayment(
       )
   let total = 0n
   for (const item of items) {
-    if (item.itemType !== ItemType.NATIVE) {
-      continue
+    if (item.itemType === ItemType.NATIVE) {
+      total += maxAmount(item)
     }
-    const start = BigInt(item.startAmount)
-    const end = BigInt(item.endAmount)
-    total += start > end ? start : end
   }
-  return total
+  return (total * numerator + denominator - 1n) / denominator
+}
+
+/**
+ * Optional creator fees are appended to the signed order as tips, which Seaport
+ * collects from the fulfiller without any signature. Cap them so the API cannot
+ * use a tip to take more than this share of the order's price.
+ */
+export const MAX_TIP_BASIS_POINTS = 1000n
+
+/**
+ * Require any tips to be paid in a currency the order already uses (native or
+ * one of its ERC20s), and to total at most {@link MAX_TIP_BASIS_POINTS} of the
+ * order's amount in that currency.
+ */
+export function requireTipsWithinCap(
+  parameters: FulfilledOrderParameters,
+): void {
+  const signed = parameters.consideration.slice(
+    0,
+    parameters.totalOriginalConsiderationItems,
+  )
+  const tips = parameters.consideration.slice(
+    parameters.totalOriginalConsiderationItems,
+  )
+  const currencyKey = (item: ItemLike) =>
+    `${item.itemType}:${item.token.toLowerCase()}`
+  const isCurrency = (item: ItemLike) =>
+    item.itemType === ItemType.NATIVE || item.itemType === ItemType.ERC20
+
+  const orderAmounts = new Map<string, bigint>()
+  for (const item of [...parameters.offer, ...signed]) {
+    if (isCurrency(item)) {
+      const key = currencyKey(item)
+      orderAmounts.set(key, (orderAmounts.get(key) ?? 0n) + maxAmount(item))
+    }
+  }
+
+  const tipAmounts = new Map<string, bigint>()
+  for (const tip of tips) {
+    const key = currencyKey(tip)
+    if (!isCurrency(tip) || !orderAmounts.has(key)) {
+      fail(`tip of ${tip.token} is not in the order's payment currency`)
+    }
+    tipAmounts.set(key, (tipAmounts.get(key) ?? 0n) + maxAmount(tip))
+  }
+  for (const [key, tipTotal] of tipAmounts) {
+    const cap = ((orderAmounts.get(key) ?? 0n) * MAX_TIP_BASIS_POINTS) / 10_000n
+    if (tipTotal > cap) {
+      fail(`tips of ${tipTotal} exceed the cap of ${cap}`)
+    }
+  }
+}
+
+/**
+ * Require the filled fraction to cover at most `unitsToFill` units of the
+ * order's NFTs, so a response cannot fill (and transfer) more than asked.
+ */
+export function requireFillWithinUnits(
+  parameters: FulfilledOrderParameters,
+  numerator: bigint,
+  denominator: bigint,
+  unitsToFill: bigint,
+): void {
+  const nftItems = [
+    ...parameters.offer,
+    ...parameters.consideration.slice(
+      0,
+      parameters.totalOriginalConsiderationItems,
+    ),
+  ].filter(item => item.itemType >= ItemType.ERC721)
+  if (nftItems.length === 0) {
+    return
+  }
+  let totalUnits = minAmount(nftItems[0])
+  for (const item of nftItems) {
+    const amount = minAmount(item)
+    if (amount < totalUnits) {
+      totalUnits = amount
+    }
+  }
+  if (numerator * totalUnits > unitsToFill * denominator) {
+    fail(
+      `fills ${numerator}/${denominator} of ${totalUnits} units, more than the ${unitsToFill} requested`,
+    )
+  }
+}
+
+/**
+ * Require each criteria resolver to pick `tokenId` from a criteria item of
+ * this order on `assetContractAddress`, whichever of the two the caller set.
+ */
+export function requireCriteriaResolversMatch(
+  parameters: FulfilledOrderParameters,
+  criteriaResolvers: unknown[],
+  tokenId: string | undefined,
+  assetContractAddress: string | undefined,
+): void {
+  criteriaResolvers.forEach((resolver, i) => {
+    if (!isRecord(resolver)) {
+      fail(`criteriaResolvers[${i}] is not a resolver`)
+    }
+    const field = `criteriaResolvers[${i}]`
+    if (toBigIntStrict(resolver.orderIndex, `${field}.orderIndex`) !== 0n) {
+      fail(`${field} does not resolve the requested order`)
+    }
+    const side = toBigIntStrict(resolver.side, `${field}.side`)
+    const index = Number(toBigIntStrict(resolver.index, `${field}.index`))
+    const items =
+      side === 0n
+        ? parameters.offer
+        : side === 1n
+          ? parameters.consideration
+          : fail(`${field}.side is out of range`)
+    const item = items[index]
+    if (
+      item === undefined ||
+      (item.itemType !== ItemType.ERC721_WITH_CRITERIA &&
+        item.itemType !== ItemType.ERC1155_WITH_CRITERIA)
+    ) {
+      fail(`${field} does not point at a criteria item`)
+    }
+    if (
+      assetContractAddress !== undefined &&
+      !isSameAddress(item.token, assetContractAddress)
+    ) {
+      fail(`${field} resolves ${item.token}, not ${assetContractAddress}`)
+    }
+    if (
+      tokenId !== undefined &&
+      toBigIntStrict(resolver.identifier, `${field}.identifier`) !==
+        BigInt(tokenId)
+    ) {
+      fail(`${field} identifier does not match token ${tokenId}`)
+    }
+  })
+}
+
+function maxAmount(item: ItemLike): bigint {
+  const start = BigInt(item.startAmount)
+  const end = BigInt(item.endAmount)
+  return start > end ? start : end
+}
+
+function minAmount(item: ItemLike): bigint {
+  const start = BigInt(item.startAmount)
+  const end = BigInt(item.endAmount)
+  return start < end ? start : end
 }
 
 export function isSameAddress(a: string, b: string): boolean {
