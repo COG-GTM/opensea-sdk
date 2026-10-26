@@ -21,6 +21,8 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
+EVM chains include Ethereum, Polygon, Base, Arbitrum, Optimism, Avalanche, Blast, Zora, Sei, B3, BeraChain, ApeChain, Flow, Ronin, Abstract, Shape, Unichain, Gunzilla, HyperEVM, Somnia, Monad, MegaETH, Soneium, AnimeChain, Ink, Robinhood, Stable Chain, Arc and Katana (`Chain.Katana`, chain id `747474`). Solana and Hyperliquid are supported for API reads but not for Seaport orders.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?

@@ -159,6 +159,35 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Using another chain (Katana)
+
+Pass any `Chain` value to target that network. For example, Katana
+(`Chain.Katana`, API slug `katana`, chain id `747474`) with ethers:
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://rpc.katana.network");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Katana, apiKey: "YOUR_API_KEY" });
+```
+
+or with viem, which ships a `katana` chain definition in `viem/chains`
+(update viem if your version predates it, or define it with `defineChain`):
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import { katana } from 'viem/chains'
+import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
+
+const publicClient = createPublicClient({ chain: katana, transport: http() })
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Katana, apiKey: 'YOUR_API_KEY' })
+```
+
+On Katana, listings default to native ETH and offers spend WETH
+(`0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62`, Katana's Vault Bridge ETH) rather
+than the OP Stack `0x4200…0006` predeploy.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
