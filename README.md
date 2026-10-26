@@ -231,6 +231,31 @@ On Linea, listings default to native ETH and offers to WETH
 (`0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f`), approved through the canonical
 OpenSea conduit.
 
+### Other chains (e.g. Mantle)
+
+Pass any `Chain` value to target another network. For example, Mantle (chain id 5000, native gas token MNT):
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://rpc.mantle.xyz");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Mantle, apiKey: "YOUR_API_KEY" });
+```
+
+With viem, import the matching chain definition from `viem/chains` (`mantle`, id 5000) so the client and the SDK agree on the network:
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import { mantle } from 'viem/chains'
+import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
+
+const publicClient = createPublicClient({ chain: mantle, transport: http() })
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mantle, apiKey: 'YOUR_API_KEY' })
+```
+
+On Mantle, listings default to native MNT and offers default to WMNT.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
