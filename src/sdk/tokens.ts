@@ -27,12 +27,14 @@ export class TokensManager {
     await this.context.requireAccountIsAvailable(accountAddress)
 
     const value = parseEther(amountInEth.toString())
+    // Resolve outside the try so chains with no wrapper (Celo, Stable Chain) reject.
+    const wrapTokenAddress = getNativeWrapTokenAddress(this.context.chain)
 
     this.context.dispatch(EventType.WrapEth, { accountAddress, amount: value })
 
     try {
       const transaction = await this.context.contractCaller.writeContract({
-        address: getNativeWrapTokenAddress(this.context.chain),
+        address: wrapTokenAddress,
         abi: WETH_DEPOSIT_ABI,
         functionName: "deposit",
         args: [],
@@ -69,12 +71,13 @@ export class TokensManager {
     await this.context.requireAccountIsAvailable(accountAddress)
 
     const amount = parseEther(amountInEth.toString())
+    const wrapTokenAddress = getNativeWrapTokenAddress(this.context.chain)
 
     this.context.dispatch(EventType.UnwrapWeth, { accountAddress, amount })
 
     try {
       const transaction = await this.context.contractCaller.writeContract({
-        address: getNativeWrapTokenAddress(this.context.chain),
+        address: wrapTokenAddress,
         abi: WETH_WITHDRAW_ABI,
         functionName: "withdraw",
         args: [amount],
