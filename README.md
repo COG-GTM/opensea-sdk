@@ -235,6 +235,33 @@ const actions = await sdk.api.listings.createListingFulfillmentActions({
 
 Execute `actions.steps` in order. If a Solana action includes a partially signed transaction or requires a Jito bundle, submit it exactly as directed by the response rather than rebuilding or broadcasting it through a public RPC.
 
+### Newer chains
+
+`Chain` includes Plasma, Sonic, Linea, Mantle, Katana and Celo. Pass one as
+`chain` exactly like `Chain.Base`:
+
+| Chain | `Chain` value | Chain id | Offer currency | viem chain |
+|-------|---------------|----------|----------------|------------|
+| Plasma | `Chain.Plasma` (`plasma`) | 9745 | WXPL | `plasma` |
+| Sonic | `Chain.Sonic` (`sonic`) | 146 | wS | `sonic` |
+| Linea | `Chain.Linea` (`linea`) | 59144 | WETH | `linea` |
+| Mantle | `Chain.Mantle` (`mantle`) | 5000 | WMNT | `mantle` |
+| Katana | `Chain.Katana` (`katana`) | 747474 | vbETH (WETH) | `katana` |
+| Celo | `Chain.Celo` (`celo`) | 42220 | CELO (ERC-20) | `celo` |
+
+Listings default to the native gas token. Approvals, Seaport, the signed zone
+and the fee recipient use the standard cross-chain deployments. CELO is already
+an ERC-20, so `wrapEth`/`unwrapWeth` throw on Celo.
+
+```typescript
+import { createPublicClient, http } from "viem";
+import { sonic } from "viem/chains";
+import { OpenSeaSDK, Chain } from "@opensea/sdk/viem";
+
+const publicClient = createPublicClient({ chain: sonic, transport: http() });
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Sonic, apiKey });
+```
+
 ### Token activity stats
 
 Read materialized trade count and USD volume for a token without aggregating
