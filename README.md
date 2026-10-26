@@ -161,7 +161,8 @@ const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YO
 
 ### Other chains (example: Plasma)
 
-Pass any `Chain` value to target another network. For example, Plasma
+Pass another EVM `Chain` value with Seaport support to target that network
+(non-EVM chains such as `Chain.Solana` are not supported by `OpenSeaSDK`). For example, Plasma
 (`Chain.Plasma`, API slug `plasma`, chain id `9745`):
 
 ```typescript
