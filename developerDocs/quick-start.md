@@ -93,28 +93,12 @@ const openseaSDK = new OpenSeaSDK(
 );
 ```
 
-### Other chains
-
-The `chain` option accepts any EVM `Chain` value (`Chain.Solana` and
-`Chain.Hyperliquid` can't construct the SDK). To target Linea, pair
-`Chain.Linea` with viem's `linea` chain (or a Linea RPC URL for ethers):
-
-```typescript
-import { createPublicClient, http } from "viem";
-import { linea } from "viem/chains";
-import { OpenSeaSDK, Chain } from "@opensea/sdk/viem";
-
-const publicClient = createPublicClient({ chain: linea, transport: http() });
-
-const openseaSDK = new OpenSeaSDK(
-  { publicClient },
-  { chain: Chain.Linea, apiKey: "YOUR_API_KEY" },
-);
-```
-
 ## Other chains
 
-The `chain` option selects the network. Pass the matching provider or viem chain. For Mantle (chain id 5000):
+The `chain` option accepts any EVM `Chain` value (`Chain.Solana` and
+`Chain.Hyperliquid` can't construct the SDK), including `Chain.Plasma`,
+`Chain.Sonic`, `Chain.Linea`, `Chain.Mantle`, `Chain.Katana` and `Chain.Celo`.
+Pass the matching provider or viem chain. For Mantle (chain id 5000) with ethers:
 
 ```typescript
 import { ethers } from "ethers";
@@ -128,18 +112,18 @@ const openseaSDK = new OpenSeaSDK(provider, {
 });
 ```
 
-With viem, use `mantle` from `viem/chains`:
+For Linea (chain id 59144) with viem, use `linea` from `viem/chains`:
 
 ```typescript
 import { createPublicClient, http } from "viem";
-import { mantle } from "viem/chains";
+import { linea } from "viem/chains";
 import { OpenSeaSDK, Chain } from "@opensea/sdk/viem";
 
-const publicClient = createPublicClient({ chain: mantle, transport: http() });
+const publicClient = createPublicClient({ chain: linea, transport: http() });
 
 const openseaSDK = new OpenSeaSDK(
   { publicClient },
-  { chain: Chain.Mantle, apiKey: "YOUR_API_KEY" },
+  { chain: Chain.Linea, apiKey: "YOUR_API_KEY" },
 );
 ```
 

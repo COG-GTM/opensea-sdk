@@ -21,15 +21,18 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
-Recently added chains include Plasma (`Chain.Plasma`, chain id `9745`).
+EVM chains include Ethereum, Polygon, Base, Arbitrum, Optimism, Avalanche, Blast, Zora, Sei, B3, BeraChain, ApeChain, Flow, Ronin, Abstract, Shape, Unichain, Gunzilla, HyperEVM, Somnia, Monad, MegaETH, Soneium, AnimeChain, Ink, Robinhood, Stable Chain, Arc, Plasma, Sonic, Linea, Mantle, Katana and Celo. Solana and Hyperliquid are supported for API reads but not for Seaport orders.
 
-Sonic is `Chain.Sonic` (slug `sonic`, chain id 146). Offers default to wS (`0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38`) and listings to native S.
+Recently added:
 
-Recently added: `Chain.Mantle` (`"mantle"`, chain id 5000). Listings on Mantle default to native MNT and offers to WMNT.
-
-EVM chains include Ethereum, Polygon, Base, Arbitrum, Optimism, Avalanche, Blast, Zora, Sei, B3, BeraChain, ApeChain, Flow, Ronin, Abstract, Shape, Unichain, Gunzilla, HyperEVM, Somnia, Monad, MegaETH, Soneium, AnimeChain, Ink, Robinhood, Stable Chain, Arc and Katana (`Chain.Katana`, chain id `747474`). Solana and Hyperliquid are supported for API reads but not for Seaport orders.
-
-EVM chains include Ethereum, Polygon, Base, Arbitrum, Optimism, Avalanche, Blast, Zora, Sei, B3, BeraChain, ApeChain, Flow, Ronin, Abstract, Shape, Unichain, Gunzilla, HyperEVM, Somnia, Monad, MegaETH, Soneium, AnimeChain, Ink, Robinhood, Stable Chain, Arc and Celo (`Chain.Celo`, chain id `42220`). Solana and Hyperliquid are supported for API reads but not for Seaport orders.
+| Chain | `Chain` value | Chain id | Listings | Offers |
+|-------|---------------|----------|----------|--------|
+| Plasma | `Chain.Plasma` (`"plasma"`) | `9745` | native XPL | WXPL |
+| Sonic | `Chain.Sonic` (`"sonic"`) | `146` | native S | wS (`0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38`) |
+| Linea | `Chain.Linea` (`"linea"`) | `59144` | native ETH | WETH |
+| Mantle | `Chain.Mantle` (`"mantle"`) | `5000` | native MNT | WMNT |
+| Katana | `Chain.Katana` (`"katana"`) | `747474` | native ETH | WETH (Vault Bridge ETH) |
+| Celo | `Chain.Celo` (`"celo"`) | `42220` | native CELO | CELO ERC-20 |
 
 Please use methods in the v2 API for multichain capabilities.
 

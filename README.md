@@ -159,11 +159,35 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
-### Other chains (example: Plasma)
+### Other chains
 
 Pass another EVM `Chain` value with Seaport support to target that network
-(non-EVM chains such as `Chain.Solana` are not supported by `OpenSeaSDK`). For example, Plasma
-(`Chain.Plasma`, API slug `plasma`, chain id `9745`):
+(non-EVM chains such as `Chain.Solana` and `Chain.Hyperliquid` are not supported
+by `OpenSeaSDK`). Recently added chains:
+
+| Chain | `Chain` value / API slug | Chain id | Listings default to | Offers default to | viem chain |
+|-------|--------------------------|----------|---------------------|-------------------|------------|
+| Plasma | `Chain.Plasma` / `plasma` | `9745` | native XPL | WXPL `0x6100e367285b01f48d07953803a2d8dca5d19873` | `defineChain` (or `plasma` if your viem exports it) |
+| Sonic | `Chain.Sonic` / `sonic` | `146` | native S | wS `0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38` | `sonic` |
+| Linea | `Chain.Linea` / `linea` | `59144` | native ETH | WETH `0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f` | `linea` |
+| Mantle | `Chain.Mantle` / `mantle` | `5000` | native MNT | WMNT `0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8` | `mantle` |
+| Katana | `Chain.Katana` / `katana` | `747474` | native ETH | WETH (Vault Bridge ETH) `0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62` | `katana` |
+| Celo | `Chain.Celo` / `celo` | `42220` | native CELO | CELO ERC-20 `0x471ece3750da237f93b8e339c536989b8978a438` | `celo` |
+
+Approvals on all of these go to the canonical OpenSea conduit. With viem, import
+the matching chain from `viem/chains` so the client and the SDK agree on the
+network:
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import { linea } from 'viem/chains'
+import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
+
+const publicClient = createPublicClient({ chain: linea, transport: http() })
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Linea, apiKey: 'YOUR_API_KEY' })
+```
+
+If your viem version has no definition for the chain (for example Plasma), define it:
 
 ```typescript
 import { defineChain, createPublicClient, http } from 'viem'
@@ -180,138 +204,21 @@ const publicClient = createPublicClient({ chain: plasma, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Plasma, apiKey: 'YOUR_API_KEY' })
 ```
 
-On Plasma, listings default to native XPL and offers to wrapped XPL (WXPL,
-`0x6100e367285b01f48d07953803a2d8dca5d19873`, 18 decimals). If your viem
-version exports a `plasma` chain from `viem/chains`, you can import it instead
-of calling `defineChain`.
-
-With ethers, pass a provider for a Plasma RPC:
+With ethers, pass a provider for the chain's RPC:
 
 ```typescript
 import { ethers } from 'ethers'
 import { OpenSeaSDK, Chain } from '@opensea/sdk'
 
-const provider = new ethers.JsonRpcProvider('YOUR_PLASMA_RPC_URL')
-const sdk = new OpenSeaSDK(provider, { chain: Chain.Plasma, apiKey: 'YOUR_API_KEY' })
+const provider = new ethers.JsonRpcProvider('https://rpc.mantle.xyz')
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Mantle, apiKey: 'YOUR_API_KEY' })
 ```
 
-### On Sonic
+Chain-specific notes:
 
-Pass `Chain.Sonic` (API slug `sonic`, chain id 146). Offers default to wS
-(wrapped S) and listings to native S; approvals go to the canonical OpenSea
-conduit.
-
-```typescript
-import { createPublicClient, http } from 'viem'
-import { sonic } from 'viem/chains'
-import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
-
-const publicClient = createPublicClient({ chain: sonic, transport: http() })
-const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Sonic, apiKey: 'YOUR_API_KEY' })
-```
-
-With ethers, pass a Sonic RPC provider and the same `{ chain: Chain.Sonic }` option.
-
-### Other chains
-
-Pass another Seaport-supported `Chain` value (every EVM chain; not
-`Chain.Solana` or `Chain.Hyperliquid`) to target that network. For example,
-Linea (`Chain.Linea`, API slug `linea`, chain id `59144`):
-
-```typescript
-import { createPublicClient, http } from 'viem'
-import { linea } from 'viem/chains'
-import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
-
-const publicClient = createPublicClient({ chain: linea, transport: http() })
-const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Linea, apiKey: 'YOUR_API_KEY' })
-```
-
-On Linea, listings default to native ETH and offers to WETH
-(`0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f`), approved through the canonical
-OpenSea conduit.
-
-### Other chains (e.g. Mantle)
-
-Pass any `Chain` value to target another network. For example, Mantle (chain id 5000, native gas token MNT):
-
-```typescript
-import { ethers } from "ethers";
-import { OpenSeaSDK, Chain } from "@opensea/sdk";
-
-const provider = new ethers.JsonRpcProvider("https://rpc.mantle.xyz");
-const sdk = new OpenSeaSDK(provider, { chain: Chain.Mantle, apiKey: "YOUR_API_KEY" });
-```
-
-With viem, import the matching chain definition from `viem/chains` (`mantle`, id 5000) so the client and the SDK agree on the network:
-
-```typescript
-import { createPublicClient, http } from 'viem'
-import { mantle } from 'viem/chains'
-import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
-
-const publicClient = createPublicClient({ chain: mantle, transport: http() })
-const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mantle, apiKey: 'YOUR_API_KEY' })
-```
-
-On Mantle, listings default to native MNT and offers default to WMNT.
-
-### Using another chain (Katana)
-
-Pass any `Chain` value to target that network. For example, Katana
-(`Chain.Katana`, API slug `katana`, chain id `747474`) with ethers:
-
-```typescript
-import { ethers } from "ethers";
-import { OpenSeaSDK, Chain } from "@opensea/sdk";
-
-const provider = new ethers.JsonRpcProvider("https://rpc.katana.network");
-const sdk = new OpenSeaSDK(provider, { chain: Chain.Katana, apiKey: "YOUR_API_KEY" });
-```
-
-or with viem, which ships a `katana` chain definition in `viem/chains`
-(update viem if your version predates it, or define it with `defineChain`):
-
-```typescript
-import { createPublicClient, http } from 'viem'
-import { katana } from 'viem/chains'
-import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
-
-const publicClient = createPublicClient({ chain: katana, transport: http() })
-const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Katana, apiKey: 'YOUR_API_KEY' })
-```
-
-On Katana, listings default to native ETH and offers spend WETH
-(`0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62`, Katana's Vault Bridge ETH) rather
-than the OP Stack `0x4200…0006` predeploy.
-
-### Using another chain (Celo)
-
-Pass any `Chain` value to target that network. For example, Celo (`Chain.Celo`,
-API slug `celo`, chain id `42220`) with ethers:
-
-```typescript
-import { ethers } from "ethers";
-import { OpenSeaSDK, Chain } from "@opensea/sdk";
-
-const provider = new ethers.JsonRpcProvider("https://forno.celo.org");
-const sdk = new OpenSeaSDK(provider, { chain: Chain.Celo, apiKey: "YOUR_API_KEY" });
-```
-
-Or with viem, import the `celo` chain from `viem/chains`:
-
-```typescript
-import { createPublicClient, http } from 'viem'
-import { celo } from 'viem/chains'
-import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
-
-const publicClient = createPublicClient({ chain: celo, transport: http() })
-const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Celo, apiKey: 'YOUR_API_KEY' })
-```
-
-On Celo, listings default to native CELO and offers spend the CELO ERC-20
-(`0x471ece3750da237f93b8e339c536989b8978a438`) directly. CELO has no separate
-wrapped token, so `wrapEth`/`unwrapWeth` throw on this chain.
+- **Katana**: offers spend Katana's Vault Bridge ETH, not the OP Stack `0x4200…0006` predeploy.
+- **Celo**: CELO is both the native gas token and an ERC-20, so offers spend it
+  directly. There is no separate wrapped token, so `wrapEth`/`unwrapWeth` throw on this chain.
 
 ### Wallet-authenticated API helpers
 

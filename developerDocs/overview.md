@@ -41,7 +41,7 @@ Happy seafaring! ⛵️
 - **Events API**: Query historical sales, transfers, and order events
 - **Token API**: Fetch trending tokens, top tokens, swap quotes, and token details
 - **Search API**: Search across collections, tokens, NFTs, and accounts
-- **Multi-chain Support**: Ethereum, Polygon, Arbitrum, Base, Optimism, Linea, and more
+- **Multi-chain Support**: Ethereum, Polygon, Arbitrum, Base, Optimism, Plasma, Sonic, Linea, Mantle, Katana, Celo, and more
 - **Type-Safe**: Full TypeScript support with comprehensive type definitions
 - **Event Listeners**: React to transactions and order changes in real-time
 
