@@ -155,6 +155,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x6100e367285b01f48d07953803a2d8dca5d19873" // WXPL
     case Chain.Sonic:
       return "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38" // wS
+    case Chain.Linea:
+      return "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f" // WETH
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -214,6 +216,7 @@ export const getListingPaymentToken = (chain: Chain) => {
     case Chain.Monad:
     case Chain.MegaETH:
     case Chain.Ink:
+    case Chain.Linea:
       return "0x0000000000000000000000000000000000000000" // ETH
     case Chain.Polygon:
       return "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619" // WETH

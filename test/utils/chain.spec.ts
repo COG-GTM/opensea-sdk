@@ -101,6 +101,7 @@ describe("Utils: chain", () => {
       [Chain.Arc, "5042"],
       [Chain.Plasma, "9745"],
       [Chain.Sonic, "146"],
+      [Chain.Linea, "59144"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -172,6 +173,12 @@ describe("Utils: chain", () => {
       for (const chain of opChains) {
         expect(getOfferPaymentToken(chain)).toBe(expectedAddress)
       }
+    })
+
+    test("returns WETH for Linea", () => {
+      expect(getOfferPaymentToken(Chain.Linea)).toBe(
+        "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f",
+      )
     })
 
     test("returns WBERA for BeraChain", () => {
@@ -373,6 +380,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.MegaETH,
         Chain.Ink,
+        Chain.Linea,
       ]
 
       for (const chain of ethChains) {
@@ -510,6 +518,12 @@ describe("Utils: chain", () => {
 
     test("returns the canonical OpenSea conduit for Plasma", () => {
       const result = getDefaultConduit(Chain.Plasma)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
+    test("returns canonical OpenSea conduit for Linea", () => {
+      const result = getDefaultConduit(Chain.Linea)
       expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
     })
@@ -722,6 +736,7 @@ describe("Utils: chain", () => {
         Chain.Gunzilla,
         Chain.Somnia,
         Chain.MegaETH,
+        Chain.Linea,
       ]
 
       for (const chain of nonPolygonChains) {
@@ -740,6 +755,12 @@ describe("Utils: chain", () => {
     test("returns wS for Sonic (same as offer token)", () => {
       expect(getNativeWrapTokenAddress(Chain.Sonic)).toBe(
         "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38",
+      )
+    })
+
+    test("returns WETH for Linea", () => {
+      expect(getNativeWrapTokenAddress(Chain.Linea)).toBe(
+        "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f",
       )
     })
 
