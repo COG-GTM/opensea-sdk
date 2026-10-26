@@ -159,6 +159,24 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Other chains
+
+Pass any `Chain` value to target another network. For example, Linea
+(`Chain.Linea`, API slug `linea`, chain id `59144`):
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import { linea } from 'viem/chains'
+import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
+
+const publicClient = createPublicClient({ chain: linea, transport: http() })
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Linea, apiKey: 'YOUR_API_KEY' })
+```
+
+On Linea, listings default to native ETH and offers to WETH
+(`0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f`), approved through the canonical
+OpenSea conduit.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped

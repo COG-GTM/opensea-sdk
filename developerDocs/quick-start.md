@@ -93,6 +93,24 @@ const openseaSDK = new OpenSeaSDK(
 );
 ```
 
+### Other chains
+
+The `chain` option accepts any `Chain` value. To target Linea, pair `Chain.Linea`
+with viem's `linea` chain (or a Linea RPC URL for ethers):
+
+```typescript
+import { createPublicClient, http } from "viem";
+import { linea } from "viem/chains";
+import { OpenSeaSDK, Chain } from "@opensea/sdk/viem";
+
+const publicClient = createPublicClient({ chain: linea, transport: http() });
+
+const openseaSDK = new OpenSeaSDK(
+  { publicClient },
+  { chain: Chain.Linea, apiKey: "YOUR_API_KEY" },
+);
+```
+
 ## Wallet
 
 Using a read-only provider won't let you authorize transactions, which are needed when approving and trading assets and currency. To make transactions, you need a signer (ethers) or wallet client (viem).
