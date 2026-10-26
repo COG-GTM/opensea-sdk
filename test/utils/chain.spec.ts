@@ -269,9 +269,9 @@ describe("Utils: chain", () => {
       )
     })
 
-    test("returns WXPL (demo placeholder) for Plasma", () => {
+    test("returns WXPL for Plasma", () => {
       expect(getOfferPaymentToken(Chain.Plasma)).toBe(
-        "0x9745000000000000000000000000000000009745",
+        "0x6100e367285b01f48d07953803a2d8dca5d19873",
       )
       expect(getOfferPaymentTokenDecimals(Chain.Plasma)).toBe(18)
     })
@@ -280,6 +280,25 @@ describe("Utils: chain", () => {
       expect(() => getOfferPaymentToken("UNKNOWN_CHAIN" as Chain)).toThrow(
         "Unknown offer currency for UNKNOWN_CHAIN",
       )
+    })
+  })
+
+  describe("Plasma defaults", () => {
+    test("seeds WXPL and native XPL with 18 decimals", () => {
+      expect(getDefaultPaymentTokenDecimals(Chain.Plasma)).toEqual({
+        "0x6100e367285b01f48d07953803a2d8dca5d19873": 18,
+        [ZERO_ADDRESS]: 18,
+      })
+      expect(usesNativeStablecoinOffers(Chain.Plasma)).toBe(false)
+    })
+
+    test("uses the default Seaport, signed zone and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Plasma)).toBe(false)
+      expect(getSeaportAddress(Chain.Plasma)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Plasma)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Plasma)).toBe(OPENSEA_FEE_RECIPIENT)
     })
   })
 
@@ -697,7 +716,7 @@ describe("Utils: chain", () => {
 
     test("returns WXPL (the offer token) for Plasma", () => {
       expect(getNativeWrapTokenAddress(Chain.Plasma)).toBe(
-        "0x9745000000000000000000000000000000009745",
+        "0x6100e367285b01f48d07953803a2d8dca5d19873",
       )
     })
 
