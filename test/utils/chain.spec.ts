@@ -14,6 +14,7 @@ import {
   OPENSEA_FEE_RECIPIENT,
   OPENSEA_SIGNED_ZONE_V2,
   SOMNIA_FEE_RECIPIENT,
+  CELO_TOKEN_ADDRESS,
   WPOL_ADDRESS,
   ZERO_ADDRESS,
 } from "../../src/constants"
@@ -38,6 +39,8 @@ describe("Utils: chain", () => {
     // Payment-token helpers throw by design for chains without Seaport support.
     const SEAPORT_UNSUPPORTED_CHAINS = [Chain.Solana, Chain.Hyperliquid]
     const NO_WRAP_TOKEN_CHAINS = [Chain.StableChain, Chain.Arc]
+    // Native token is already an ERC-20, so there is nothing to wrap
+    const ERC20_NATIVE_CHAINS = [Chain.Celo]
     // Non-EVM chains with no numeric chain id
     const NO_CHAIN_ID_CHAINS = [Chain.Solana, Chain.Hyperliquid]
     const EVM_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/
@@ -53,6 +56,10 @@ describe("Utils: chain", () => {
           expect(getListingPaymentToken(chain)).toMatch(EVM_ADDRESS_RE)
           if (NO_WRAP_TOKEN_CHAINS.includes(chain)) {
             expect(usesNativeStablecoinOffers(chain)).toBe(true)
+            expect(() => getNativeWrapTokenAddress(chain)).toThrow()
+          } else if (ERC20_NATIVE_CHAINS.includes(chain)) {
+            expect(usesNativeStablecoinOffers(chain)).toBe(false)
+            expect(getOfferPaymentTokenDecimals(chain)).toBe(18)
             expect(() => getNativeWrapTokenAddress(chain)).toThrow()
           } else {
             expect(usesNativeStablecoinOffers(chain)).toBe(false)
@@ -99,6 +106,12 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Plasma, "9745"],
+      [Chain.Sonic, "146"],
+      [Chain.Linea, "59144"],
+      [Chain.Mantle, "5000"],
+      [Chain.Katana, "747474"],
+      [Chain.Celo, "42220"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -686,6 +699,99 @@ describe("Utils: chain", () => {
     test("throws for Arc", () => {
       expect(() => getNativeWrapTokenAddress(Chain.Arc)).toThrow(
         "0x3600000000000000000000000000000000000000",
+      )
+    })
+  })
+
+  describe("COG-1419 chains (Plasma, Sonic, Linea, Mantle, Katana, Celo)", () => {
+    const newChains: Array<{
+      chain: Chain
+      chainId: string
+      offerToken: string
+    }> = [
+      {
+        chain: Chain.Plasma,
+        chainId: "9745",
+        offerToken: "0x6100e367285b01f48d07953803a2d8dca5d19873",
+      },
+      {
+        chain: Chain.Sonic,
+        chainId: "146",
+        offerToken: "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38",
+      },
+      {
+        chain: Chain.Linea,
+        chainId: "59144",
+        offerToken: "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f",
+      },
+      {
+        chain: Chain.Mantle,
+        chainId: "5000",
+        offerToken: "0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8",
+      },
+      {
+        chain: Chain.Katana,
+        chainId: "747474",
+        offerToken: "0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62",
+      },
+      {
+        chain: Chain.Celo,
+        chainId: "42220",
+        offerToken: CELO_TOKEN_ADDRESS,
+      },
+    ]
+
+    for (const { chain, chainId, offerToken } of newChains) {
+      describe(chain, () => {
+        test("uses the API slug as the enum value", () => {
+          expect(Object.values(Chain)).toContain(chain)
+        })
+
+        test("maps to its public EVM chain id", () => {
+          expect(getChainId(chain)).toBe(chainId)
+        })
+
+        test("offers default to the wrapped native token", () => {
+          expect(getOfferPaymentToken(chain)).toBe(offerToken)
+          expect(getOfferPaymentTokenDecimals(chain)).toBe(18)
+          expect(usesNativeStablecoinOffers(chain)).toBe(false)
+        })
+
+        test("listings default to the native gas token", () => {
+          expect(getListingPaymentToken(chain)).toBe(ZERO_ADDRESS)
+        })
+
+        test("uses the canonical OpenSea conduit", () => {
+          expect(getDefaultConduit(chain)).toEqual({
+            key: OPENSEA_CONDUIT_KEY,
+            address: OPENSEA_CONDUIT_ADDRESS,
+          })
+        })
+
+        test("uses the cross-chain Seaport, signed zone and fee recipient", () => {
+          expect(usesAlternateProtocol(chain)).toBe(false)
+          expect(getSeaportAddress(chain)).toBe(
+            CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+          )
+          expect(getSignedZone(chain)).toBe(OPENSEA_SIGNED_ZONE_V2)
+          expect(getFeeRecipient(chain)).toBe(OPENSEA_FEE_RECIPIENT)
+        })
+      })
+    }
+
+    test.each([
+      Chain.Plasma,
+      Chain.Sonic,
+      Chain.Linea,
+      Chain.Mantle,
+      Chain.Katana,
+    ])("wraps native on %s through the offer token", (chain) => {
+      expect(getNativeWrapTokenAddress(chain)).toBe(getOfferPaymentToken(chain))
+    })
+
+    test("throws for Celo wrap because CELO is already an ERC-20", () => {
+      expect(() => getNativeWrapTokenAddress(Chain.Celo)).toThrow(
+        CELO_TOKEN_ADDRESS,
       )
     })
   })

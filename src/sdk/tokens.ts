@@ -27,12 +27,13 @@ export class TokensManager {
     await this.context.requireAccountIsAvailable(accountAddress)
 
     const value = parseEther(amountInEth.toString())
+    const address = getNativeWrapTokenAddress(this.context.chain)
 
     this.context.dispatch(EventType.WrapEth, { accountAddress, amount: value })
 
     try {
       const transaction = await this.context.contractCaller.writeContract({
-        address: getNativeWrapTokenAddress(this.context.chain),
+        address,
         abi: WETH_DEPOSIT_ABI,
         functionName: "deposit",
         args: [],
@@ -69,12 +70,13 @@ export class TokensManager {
     await this.context.requireAccountIsAvailable(accountAddress)
 
     const amount = parseEther(amountInEth.toString())
+    const address = getNativeWrapTokenAddress(this.context.chain)
 
     this.context.dispatch(EventType.UnwrapWeth, { accountAddress, amount })
 
     try {
       const transaction = await this.context.contractCaller.writeContract({
-        address: getNativeWrapTokenAddress(this.context.chain),
+        address,
         abi: WETH_WITHDRAW_ABI,
         functionName: "withdraw",
         args: [amount],
