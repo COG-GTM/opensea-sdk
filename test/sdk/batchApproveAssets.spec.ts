@@ -81,6 +81,31 @@ describe("AssetsManager: batchApproveAssets", () => {
     )
   })
 
+  test("approves numeric amounts at or above 1e21 (no exponential parsing)", async () => {
+    const h = harness()
+
+    await h.manager.batchApproveAssets({
+      assets: [
+        {
+          asset: {
+            tokenAddress: TOKEN,
+            tokenId: null,
+            tokenStandard: TokenStandard.ERC20,
+          },
+          amount: 1e21,
+        },
+      ],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "approve",
+        args: [OPENSEA_CONDUIT_ADDRESS, 10n ** 21n],
+      }),
+    )
+  })
+
   test("skips the approval when the allowance already covers the summed amount", async () => {
     const h = harness(Chain.Mainnet, 3n)
 

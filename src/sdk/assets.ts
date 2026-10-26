@@ -393,10 +393,7 @@ export class AssetsManager {
         continue
       }
       const token = asset.tokenAddress.toLowerCase()
-      erc20Totals.set(
-        token,
-        (erc20Totals.get(token) ?? 0n) + BigInt(amount.toString()),
-      )
+      erc20Totals.set(token, (erc20Totals.get(token) ?? 0n) + BigInt(amount))
     }
 
     for (const { asset, amount } of assets) {
