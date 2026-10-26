@@ -1,6 +1,7 @@
 import { CROSS_CHAIN_SEAPORT_V1_6_ADDRESS } from "@opensea/seaport-js/lib/constants"
 import {
   ALTERNATE_CONDUIT_ADDRESS,
+  CELO_TOKEN_ADDRESS,
   ALTERNATE_CONDUIT_KEY,
   ALTERNATE_FEE_RECIPIENT,
   ALTERNATE_SEAPORT_V1_6_ADDRESS,
@@ -151,6 +152,18 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x3bd359c1119da7da1d913d1c4d2b7c461115433a" // WMON
     case Chain.Robinhood:
       return "0x0bd7d308f8e1639fab988df18a8011f41eacad73" // WETH
+    case Chain.Plasma:
+      return "0x6100e367285b01f48d07953803a2d8dca5d19873" // WXPL
+    case Chain.Sonic:
+      return "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38" // wS
+    case Chain.Linea:
+      return "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f" // WETH
+    case Chain.Mantle:
+      return "0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8" // WMNT
+    case Chain.Katana:
+      return "0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62" // vbETH (WETH)
+    case Chain.Celo:
+      return CELO_TOKEN_ADDRESS // CELO (native token is itself an ERC-20)
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -234,6 +247,13 @@ export const getListingPaymentToken = (chain: Chain) => {
     case Chain.Arc:
       return ZERO_ADDRESS
     case Chain.StableChain:
+      return ZERO_ADDRESS
+    case Chain.Plasma: // XPL
+    case Chain.Sonic: // S
+    case Chain.Linea: // ETH
+    case Chain.Mantle: // MNT
+    case Chain.Katana: // ETH
+    case Chain.Celo: // CELO
       return ZERO_ADDRESS
     default: {
       const exhaustiveChain: never = chain
@@ -330,6 +350,10 @@ export const getNativeWrapTokenAddress = (chain: Chain): string => {
   switch (chain) {
     case Chain.Polygon:
       return WPOL_ADDRESS
+    case Chain.Celo:
+      throw new Error(
+        `Chain ${chain} has no wrapped native token; CELO is already an ERC-20 at ${CELO_TOKEN_ADDRESS}`,
+      )
     default:
       return getOfferPaymentToken(chain)
   }

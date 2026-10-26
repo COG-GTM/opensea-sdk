@@ -81,6 +81,9 @@ export const ALTERNATE_FEE_RECIPIENT =
 
 export const WPOL_ADDRESS = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
 
+/** CELO native token, which is also an ERC-20 (GoldToken), so it has no wrapper. */
+export const CELO_TOKEN_ADDRESS = "0x471ece3750da237f93b8e339c536989b8978a438"
+
 export const MULTICALL3_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11"
 
 export const TRANSFER_HELPER_ADDRESS =
