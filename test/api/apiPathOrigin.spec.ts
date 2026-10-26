@@ -94,6 +94,18 @@ describe("API path origin check", () => {
     ])
   })
 
+  test("a relative proxy base URL keeps its relative request URL", async () => {
+    const { api, fetchMock } = makeApi("/opensea-proxy")
+    await api.collections.getCollection("azuki")
+    await api.post("/api/v2/offers", { a: 1 })
+    await expect(api.get("@evil.example/x")).rejects.toThrow(/Invalid API path/)
+
+    expect(fetchMock.mock.calls.map(call => String(call[0]))).toEqual([
+      "/opensea-proxy/api/v2/collections/azuki",
+      "/opensea-proxy/api/v2/offers",
+    ])
+  })
+
   test("internal sub-client calls are unaffected", async () => {
     const { api, fetchMock } = makeApi()
     await api.collections.getCollection("azuki")

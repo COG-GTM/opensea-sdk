@@ -1727,7 +1727,15 @@ export class OpenSeaAPI {
       )
     }
     const url = `${this.apiBaseUrl}${apiPath}`
-    if (new URL(url).origin !== new URL(this.apiBaseUrl).origin) {
+    // A relative apiBaseUrl (e.g. a same-origin browser proxy) is resolved
+    // against the page, or a placeholder, so only the origin is compared.
+    const resolveBase =
+      (globalThis as { location?: { href?: string } }).location?.href ??
+      "http://localhost"
+    if (
+      new URL(url, resolveBase).origin !==
+      new URL(this.apiBaseUrl, resolveBase).origin
+    ) {
       throw new Error(
         `Invalid API path ${JSON.stringify(apiPath)}: resolves outside ${this.apiBaseUrl}`,
       )
