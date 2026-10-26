@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Linea, "59144"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -170,6 +171,12 @@ describe("Utils: chain", () => {
       for (const chain of opChains) {
         expect(getOfferPaymentToken(chain)).toBe(expectedAddress)
       }
+    })
+
+    test("returns WETH for Linea", () => {
+      expect(getOfferPaymentToken(Chain.Linea)).toBe(
+        "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f",
+      )
     })
 
     test("returns WBERA for BeraChain", () => {
@@ -339,6 +346,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.MegaETH,
         Chain.Ink,
+        Chain.Linea,
       ]
 
       for (const chain of ethChains) {
@@ -464,6 +472,12 @@ describe("Utils: chain", () => {
       const result = getDefaultConduit(Chain.Arc)
       expect(result.key).toBe(OPENSEA_CONDUIT_KEY_2)
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS_2)
+    })
+
+    test("returns canonical OpenSea conduit for Linea", () => {
+      const result = getDefaultConduit(Chain.Linea)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
     })
 
     test("returns alternate conduit for Gunzilla", () => {
@@ -668,6 +682,7 @@ describe("Utils: chain", () => {
         Chain.Gunzilla,
         Chain.Somnia,
         Chain.MegaETH,
+        Chain.Linea,
       ]
 
       for (const chain of nonPolygonChains) {
@@ -675,6 +690,12 @@ describe("Utils: chain", () => {
           getOfferPaymentToken(chain),
         )
       }
+    })
+
+    test("returns WETH for Linea", () => {
+      expect(getNativeWrapTokenAddress(Chain.Linea)).toBe(
+        "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f",
+      )
     })
 
     test("throws for Stable Chain", () => {

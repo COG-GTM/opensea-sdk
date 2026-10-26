@@ -151,6 +151,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x3bd359c1119da7da1d913d1c4d2b7c461115433a" // WMON
     case Chain.Robinhood:
       return "0x0bd7d308f8e1639fab988df18a8011f41eacad73" // WETH
+    case Chain.Linea:
+      return "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f" // WETH
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -210,6 +212,7 @@ export const getListingPaymentToken = (chain: Chain) => {
     case Chain.Monad:
     case Chain.MegaETH:
     case Chain.Ink:
+    case Chain.Linea:
       return "0x0000000000000000000000000000000000000000" // ETH
     case Chain.Polygon:
       return "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619" // WETH
