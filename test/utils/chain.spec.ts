@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Mantle, "5000"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -244,6 +245,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns WMNT for Mantle", () => {
+      expect(getOfferPaymentToken(Chain.Mantle)).toBe(
+        "0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8",
+      )
+    })
+
     test("returns USDT0 for Stable Chain", () => {
       expect(getOfferPaymentToken(Chain.StableChain)).toBe(
         "0x779ded0c9e1022225f8e0630b35a9b54be713736",
@@ -348,6 +355,10 @@ describe("Utils: chain", () => {
       }
     })
 
+    test("returns MNT (0x0) for Mantle", () => {
+      expect(getListingPaymentToken(Chain.Mantle)).toBe(ZERO_ADDRESS)
+    })
+
     test("returns ANIME (0x0) for AnimeChain", () => {
       expect(getListingPaymentToken(Chain.AnimeChain)).toBe(
         "0x0000000000000000000000000000000000000000",
@@ -432,6 +443,12 @@ describe("Utils: chain", () => {
   describe("getDefaultConduit", () => {
     test("returns default OpenSea conduit for Mainnet", () => {
       const result = getDefaultConduit(Chain.Mainnet)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
+    test("returns default OpenSea conduit for Mantle", () => {
+      const result = getDefaultConduit(Chain.Mantle)
       expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
     })
@@ -638,6 +655,7 @@ describe("Utils: chain", () => {
         Chain.Abstract,
         Chain.HyperEVM,
         Chain.Monad,
+        Chain.Mantle,
       ]
 
       for (const chain of standardChains) {
@@ -668,6 +686,7 @@ describe("Utils: chain", () => {
         Chain.Gunzilla,
         Chain.Somnia,
         Chain.MegaETH,
+        Chain.Mantle,
       ]
 
       for (const chain of nonPolygonChains) {
