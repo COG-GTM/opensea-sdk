@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Plasma, "9745"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -268,6 +269,13 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns WXPL (demo placeholder) for Plasma", () => {
+      expect(getOfferPaymentToken(Chain.Plasma)).toBe(
+        "0x9745000000000000000000000000000000009745",
+      )
+      expect(getOfferPaymentTokenDecimals(Chain.Plasma)).toBe(18)
+    })
+
     test("throws for unknown chain", () => {
       expect(() => getOfferPaymentToken("UNKNOWN_CHAIN" as Chain)).toThrow(
         "Unknown offer currency for UNKNOWN_CHAIN",
@@ -422,6 +430,10 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns native XPL (0x0) for Plasma", () => {
+      expect(getListingPaymentToken(Chain.Plasma)).toBe(ZERO_ADDRESS)
+    })
+
     test("throws for unknown chain", () => {
       expect(() => getListingPaymentToken("UNKNOWN_CHAIN" as Chain)).toThrow(
         "Unknown listing currency for UNKNOWN_CHAIN",
@@ -464,6 +476,12 @@ describe("Utils: chain", () => {
       const result = getDefaultConduit(Chain.Arc)
       expect(result.key).toBe(OPENSEA_CONDUIT_KEY_2)
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS_2)
+    })
+
+    test("returns the canonical OpenSea conduit for Plasma", () => {
+      const result = getDefaultConduit(Chain.Plasma)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
     })
 
     test("returns alternate conduit for Gunzilla", () => {
@@ -675,6 +693,12 @@ describe("Utils: chain", () => {
           getOfferPaymentToken(chain),
         )
       }
+    })
+
+    test("returns WXPL (the offer token) for Plasma", () => {
+      expect(getNativeWrapTokenAddress(Chain.Plasma)).toBe(
+        "0x9745000000000000000000000000000000009745",
+      )
     })
 
     test("throws for Stable Chain", () => {
