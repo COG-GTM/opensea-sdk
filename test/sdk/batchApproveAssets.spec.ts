@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from "vitest"
+import { OPENSEA_CONDUIT_ADDRESS } from "../../src/constants"
 import { AssetsManager } from "../../src/sdk/assets"
 import type { SDKContext } from "../../src/sdk/context"
 import { Chain, EventType, TokenStandard } from "../../src/types"
@@ -10,17 +11,17 @@ const FROM = "0x0000000000000000000000000000000000000001"
  * batchApproveAssets only touches a handful of context members, so build the
  * minimum and cast. Allowance reads return 0 so every asset looks unapproved.
  */
-function harness() {
+function harness(chain: Chain = Chain.Mainnet, allowance = 0n) {
   const sendTransaction = vi.fn().mockResolvedValue({ hash: "0xtest" })
   const writeContract = vi.fn().mockResolvedValue({ hash: "0xmulticall" })
   const encodeFunctionData = vi.fn().mockReturnValue("0xapproval")
   const confirmTransaction = vi.fn().mockResolvedValue(undefined)
 
   const context = {
-    chain: Chain.Mainnet,
+    chain,
     wallet: { signer: { sendTransaction } },
     contractCaller: {
-      readContract: vi.fn().mockResolvedValue(0n),
+      readContract: vi.fn().mockResolvedValue(allowance),
       writeContract,
       encodeFunctionData,
     },
@@ -61,6 +62,66 @@ describe("AssetsManager: batchApproveAssets", () => {
       "0xtest",
       EventType.ApproveAllAssets,
       "Approving asset for transfer",
+    )
+  })
+
+  test("approves the summed requested amount, not an unlimited allowance", async () => {
+    const h = harness()
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "1"), erc20(TOKEN.toUpperCase(), "2")],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "approve",
+        args: [OPENSEA_CONDUIT_ADDRESS, 3n],
+      }),
+    )
+  })
+
+  test("skips the approval when the allowance already covers the summed amount", async () => {
+    const h = harness(Chain.Mainnet, 3n)
+
+    const hash = await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "1"), erc20(TOKEN, "2")],
+      fromAddress: FROM,
+    })
+
+    expect(hash).toBeUndefined()
+    expect(h.encodeFunctionData).not.toHaveBeenCalled()
+    expect(h.sendTransaction).not.toHaveBeenCalled()
+  })
+
+  test("approves the canonical OpenSea conduit on Mantle", async () => {
+    const h = harness(Chain.Mantle)
+
+    await h.manager.batchApproveAssets({
+      assets: [
+        erc20(TOKEN, "5"),
+        {
+          asset: {
+            tokenAddress: "0x2222222222222222222222222222222222222222",
+            tokenId: "1",
+            tokenStandard: TokenStandard.ERC721,
+          },
+        },
+      ],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "approve",
+        args: [OPENSEA_CONDUIT_ADDRESS, 5n],
+      }),
+    )
+    expect(h.encodeFunctionData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "setApprovalForAll",
+        args: [OPENSEA_CONDUIT_ADDRESS, true],
+      }),
     )
   })
 

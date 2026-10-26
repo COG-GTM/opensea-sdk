@@ -7,7 +7,6 @@ import {
   ALTERNATE_SEAPORT_V1_6_ADDRESS,
   ALTERNATE_SIGNED_ZONE_V2_ADDRESS,
   GUNZILLA_FEE_RECIPIENT,
-  MANTLE_CONDUIT_ADDRESS,
   OPENSEA_CONDUIT_ADDRESS,
   OPENSEA_CONDUIT_ADDRESS_2,
   OPENSEA_CONDUIT_KEY,
@@ -448,10 +447,24 @@ describe("Utils: chain", () => {
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
     })
 
-    test("returns the Mantle conduit for Mantle", () => {
+    test("returns the canonical OpenSea conduit for Mantle", () => {
       const result = getDefaultConduit(Chain.Mantle)
       expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
-      expect(result.address).toBe(MANTLE_CONDUIT_ADDRESS)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
+    test("every chain resolves to a canonical conduit key/address pair", () => {
+      const canonical = new Map([
+        [OPENSEA_CONDUIT_KEY, OPENSEA_CONDUIT_ADDRESS],
+        [OPENSEA_CONDUIT_KEY_2, OPENSEA_CONDUIT_ADDRESS_2],
+        [ALTERNATE_CONDUIT_KEY, ALTERNATE_CONDUIT_ADDRESS],
+      ])
+
+      for (const chain of Object.values(Chain) as Chain[]) {
+        const { key, address } = getDefaultConduit(chain)
+        expect(canonical.has(key), `${chain} conduit key`).toBe(true)
+        expect(address, `${chain} conduit address`).toBe(canonical.get(key))
+      }
     })
 
     test("returns conduit 2 for Abstract", () => {
