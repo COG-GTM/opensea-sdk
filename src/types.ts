@@ -217,6 +217,7 @@ export enum Chain {
   Linea = "linea",
   Mantle = "mantle",
   Katana = "katana",
+  Celo = "celo",
 }
 
 // Compile-time check: every ChainIdentifier from the API spec must be assignable to Chain.
