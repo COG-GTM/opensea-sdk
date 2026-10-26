@@ -152,8 +152,7 @@ export const getOfferPaymentToken = (chain: Chain) => {
     case Chain.Robinhood:
       return "0x0bd7d308f8e1639fab988df18a8011f41eacad73" // WETH
     case Chain.Plasma:
-      // DEMO PLACEHOLDER (fictional, testnet)
-      return "0x9745000000000000000000000000000000009745" // WXPL
+      return "0x6100e367285b01f48d07953803a2d8dca5d19873" // WXPL
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
