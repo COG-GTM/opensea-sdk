@@ -179,8 +179,20 @@ const publicClient = createPublicClient({ chain: plasma, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Plasma, apiKey: 'YOUR_API_KEY' })
 ```
 
-On Plasma, listings default to native XPL and offers to wrapped XPL (WXPL).
-The WXPL address in this fork is a demo placeholder.
+On Plasma, listings default to native XPL and offers to wrapped XPL (WXPL,
+`0x6100e367285b01f48d07953803a2d8dca5d19873`, 18 decimals). If your viem
+version exports a `plasma` chain from `viem/chains`, you can import it instead
+of calling `defineChain`.
+
+With ethers, pass a provider for a Plasma RPC:
+
+```typescript
+import { ethers } from 'ethers'
+import { OpenSeaSDK, Chain } from '@opensea/sdk'
+
+const provider = new ethers.JsonRpcProvider('YOUR_PLASMA_RPC_URL')
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Plasma, apiKey: 'YOUR_API_KEY' })
+```
 
 ### Wallet-authenticated API helpers
 
