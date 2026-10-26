@@ -159,6 +159,23 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### On Sonic
+
+Pass `Chain.Sonic` (API slug `sonic`, chain id 146). Offers default to wS
+(wrapped S) and listings to native S; approvals go to the canonical OpenSea
+conduit.
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import { sonic } from 'viem/chains'
+import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
+
+const publicClient = createPublicClient({ chain: sonic, transport: http() })
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Sonic, apiKey: 'YOUR_API_KEY' })
+```
+
+With ethers, pass a Sonic RPC provider and the same `{ chain: Chain.Sonic }` option.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
