@@ -161,8 +161,9 @@ const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YO
 
 ### Other chains
 
-Pass any `Chain` value to target another network. For example, Linea
-(`Chain.Linea`, API slug `linea`, chain id `59144`):
+Pass another Seaport-supported `Chain` value (every EVM chain; not
+`Chain.Solana` or `Chain.Hyperliquid`) to target that network. For example,
+Linea (`Chain.Linea`, API slug `linea`, chain id `59144`):
 
 ```typescript
 import { createPublicClient, http } from 'viem'

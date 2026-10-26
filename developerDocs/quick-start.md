@@ -95,8 +95,9 @@ const openseaSDK = new OpenSeaSDK(
 
 ### Other chains
 
-The `chain` option accepts any `Chain` value. To target Linea, pair `Chain.Linea`
-with viem's `linea` chain (or a Linea RPC URL for ethers):
+The `chain` option accepts any EVM `Chain` value (`Chain.Solana` and
+`Chain.Hyperliquid` can't construct the SDK). To target Linea, pair
+`Chain.Linea` with viem's `linea` chain (or a Linea RPC URL for ethers):
 
 ```typescript
 import { createPublicClient, http } from "viem";
