@@ -11,6 +11,7 @@ export const CHAIN_ID_MAP: Record<string, string> = {
   unichain: "130",
   polygon: "137",
   monad: "143",
+  sonic: "146",
   shape: "360",
   flow: "747",
   stablechain: "988",
