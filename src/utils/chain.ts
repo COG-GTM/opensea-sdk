@@ -6,6 +6,7 @@ import {
   ALTERNATE_SEAPORT_V1_6_ADDRESS,
   ALTERNATE_SIGNED_ZONE_V2_ADDRESS,
   GUNZILLA_FEE_RECIPIENT,
+  MANTLE_CONDUIT_ADDRESS,
   OPENSEA_CONDUIT_ADDRESS,
   OPENSEA_CONDUIT_ADDRESS_2,
   OPENSEA_CONDUIT_KEY,
@@ -151,6 +152,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x3bd359c1119da7da1d913d1c4d2b7c461115433a" // WMON
     case Chain.Robinhood:
       return "0x0bd7d308f8e1639fab988df18a8011f41eacad73" // WETH
+    case Chain.Mantle:
+      return "0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8" // WMNT
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -235,6 +238,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return ZERO_ADDRESS
     case Chain.StableChain:
       return ZERO_ADDRESS
+    case Chain.Mantle:
+      return ZERO_ADDRESS // MNT
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown listing currency for ${exhaustiveChain}`)
@@ -260,6 +265,11 @@ export const getDefaultConduit = (
       return {
         key: OPENSEA_CONDUIT_KEY_2,
         address: OPENSEA_CONDUIT_ADDRESS_2,
+      }
+    case Chain.Mantle:
+      return {
+        key: OPENSEA_CONDUIT_KEY,
+        address: MANTLE_CONDUIT_ADDRESS,
       }
     default:
       if (usesAlternateProtocol(chain)) {
