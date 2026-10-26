@@ -23,6 +23,8 @@ See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opens
 
 Recently added chains include Plasma (`Chain.Plasma`, chain id `9745`).
 
+Sonic is `Chain.Sonic` (slug `sonic`, chain id 146). Offers default to wS (`0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38`) and listings to native S.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
