@@ -159,6 +159,24 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Using another chain (Celo)
+
+Pass any `Chain` value to target that network. For example, Celo (`Chain.Celo`,
+API slug `celo`, chain id `42220`) with viem's `celo` chain:
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import { celo } from 'viem/chains'
+import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
+
+const publicClient = createPublicClient({ chain: celo, transport: http() })
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Celo, apiKey: 'YOUR_API_KEY' })
+```
+
+On Celo, listings default to native CELO and offers spend the CELO ERC-20
+(`0x471ece3750da237f93b8e339c536989b8978a438`) directly. CELO has no separate
+wrapped token, so `wrapEth`/`unwrapWeth` throw on this chain.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
