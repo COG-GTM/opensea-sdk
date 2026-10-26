@@ -1,4 +1,9 @@
+import { Seaport } from "@opensea/seaport-js"
+import { CROSS_CHAIN_SEAPORT_V1_6_ADDRESS } from "@opensea/seaport-js/lib/constants"
+import { ethers } from "ethers"
 import { describe, expect, test, vi } from "vitest"
+import { ALTERNATE_SEAPORT_V1_6_ADDRESS } from "../../src/constants"
+import type { OrderV2 } from "../../src/orders/types"
 import { DEFAULT_SEAPORT_CONTRACT_ADDRESS } from "../../src/orders/utils"
 import { FulfillmentManager } from "../../src/sdk/fulfillment"
 import { Chain, EventType } from "../../src/types"
@@ -10,6 +15,139 @@ import {
   mockOrderV2,
   mockPrivateListingOrderV2,
 } from "../fixtures/orders"
+
+const SEAPORT = CROSS_CHAIN_SEAPORT_V1_6_ADDRESS
+const ZERO_ADDRESS = `0x${"0".repeat(40)}`
+const ZERO_BYTES32 = `0x${"0".repeat(64)}`
+const OPENSEA_CONDUIT_KEY =
+  "0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000"
+const OPENSEA_FEE_RECIPIENT = "0x0000a26b00c1f0df003000390027140000faa719"
+const SELLER_ADDRESS = "0xfba662e1a8e91a350702cf3b87d0c2d2fb4ba57f"
+
+// Real seaport-js hashing, so the tests exercise the same order hash check
+// the SDK runs against API responses. Constructing it makes no RPC calls.
+const orderHasher = new Seaport(
+  new ethers.JsonRpcProvider("http://127.0.0.1:8545", 1, {
+    staticNetwork: true,
+  }),
+)
+
+/** Order hash of API-shaped `OrderParameters` (tips excluded), counter 0. */
+function orderHashOf(parameters: any, counter = "0"): string {
+  const { totalOriginalConsiderationItems, ...rest } = parameters
+  return orderHasher.getOrderHash({
+    ...rest,
+    consideration: rest.consideration.slice(
+      0,
+      Number(totalOriginalConsiderationItems),
+    ),
+    totalOriginalConsiderationItems: Number(totalOriginalConsiderationItems),
+    counter,
+  })
+}
+
+const ADVANCED_ORDER_PARAMETERS = {
+  offerer: SELLER_ADDRESS,
+  zone: ZERO_ADDRESS,
+  offer: [
+    {
+      itemType: 3,
+      token: "0x88d381e3c65221abea498c69e990d1deb7bd3863",
+      identifierOrCriteria: "1",
+      startAmount: "10000",
+      endAmount: "10000",
+    },
+  ],
+  consideration: [
+    {
+      itemType: 0,
+      token: ZERO_ADDRESS,
+      identifierOrCriteria: "0",
+      startAmount: "99000000",
+      endAmount: "99000000",
+      recipient: SELLER_ADDRESS,
+    },
+  ],
+  orderType: 1,
+  startTime: "1759963495",
+  endTime: "1775515495",
+  zoneHash: ZERO_BYTES32,
+  salt: "27855337018906766782546881864045825683096516384821792734247163280454785126732",
+  conduitKey: OPENSEA_CONDUIT_KEY,
+  totalOriginalConsiderationItems: "1",
+}
+const ORDER_HASH = orderHashOf(ADVANCED_ORDER_PARAMETERS)
+const listingOrder: OrderV2 = { ...mockOrderV2, orderHash: ORDER_HASH }
+const offerOrder: OrderV2 = { ...mockOfferOrderV2, orderHash: ORDER_HASH }
+
+/** An ETH_TO_ERC721 basic order: 0.975 ETH to the seller plus a 0.025 ETH fee. */
+const BASIC_ORDER_PARAMETERS = {
+  considerationToken: ZERO_ADDRESS,
+  considerationIdentifier: "0",
+  considerationAmount: "975000000000000000",
+  offerer: SELLER_ADDRESS,
+  zone: ZERO_ADDRESS,
+  offerToken: "0x88d381e3c65221abea498c69e990d1deb7bd3863",
+  offerIdentifier: "42",
+  offerAmount: "1",
+  basicOrderType: 0,
+  startTime: "1759963495",
+  endTime: "1775515495",
+  zoneHash: ZERO_BYTES32,
+  salt: "123456789",
+  offererConduitKey: OPENSEA_CONDUIT_KEY,
+  fulfillerConduitKey: ZERO_BYTES32,
+  totalOriginalAdditionalRecipients: "1",
+  additionalRecipients: [
+    { amount: "25000000000000000", recipient: OPENSEA_FEE_RECIPIENT },
+  ],
+  signature: "0x",
+}
+// The order the seller signed, written out independently of the SDK's
+// basic-order conversion so the test checks that conversion.
+const BASIC_ORDER_HASH = orderHasher.getOrderHash({
+  offerer: SELLER_ADDRESS,
+  zone: ZERO_ADDRESS,
+  offer: [
+    {
+      itemType: 2,
+      token: "0x88d381e3c65221abea498c69e990d1deb7bd3863",
+      identifierOrCriteria: "42",
+      startAmount: "1",
+      endAmount: "1",
+    },
+  ],
+  consideration: [
+    {
+      itemType: 0,
+      token: ZERO_ADDRESS,
+      identifierOrCriteria: "0",
+      startAmount: "975000000000000000",
+      endAmount: "975000000000000000",
+      recipient: SELLER_ADDRESS,
+    },
+    {
+      itemType: 0,
+      token: ZERO_ADDRESS,
+      identifierOrCriteria: "0",
+      startAmount: "25000000000000000",
+      endAmount: "25000000000000000",
+      recipient: OPENSEA_FEE_RECIPIENT,
+    },
+  ],
+  orderType: 0,
+  startTime: "1759963495",
+  endTime: "1775515495",
+  zoneHash: ZERO_BYTES32,
+  salt: "123456789",
+  conduitKey: OPENSEA_CONDUIT_KEY,
+  totalOriginalConsiderationItems: 2,
+  counter: "0",
+})
+const basicListingOrder: OrderV2 = {
+  ...mockOrderV2,
+  orderHash: BASIC_ORDER_HASH,
+}
 
 describe("SDK: FulfillmentManager", () => {
   let mockOrdersManager: any
@@ -47,44 +185,13 @@ describe("SDK: FulfillmentManager", () => {
       generateFulfillmentData: vi.fn().mockResolvedValue({
         fulfillmentData: {
           transaction: {
-            to: "0xSeaportAddress",
+            to: SEAPORT,
             value: 0,
             function:
               "fulfillAdvancedOrder(((address,address,(uint8,address,uint256,uint256,uint256)[],(uint8,address,uint256,uint256,uint256,address)[],uint8,uint256,uint256,bytes32,uint256,bytes32,uint256),uint120,uint120,bytes,bytes),(uint256,uint8,uint256,uint256,bytes32[])[],bytes32,address)",
             inputData: {
               advancedOrder: {
-                parameters: {
-                  offerer: "0xfba662e1a8e91a350702cf3b87d0c2d2fb4ba57f",
-                  zone: "0x0000000000000000000000000000000000000000",
-                  offer: [
-                    {
-                      itemType: 3,
-                      token: "0x88d381e3c65221abea498c69e990d1deb7bd3863",
-                      identifierOrCriteria: "1",
-                      startAmount: "10000",
-                      endAmount: "10000",
-                    },
-                  ],
-                  consideration: [
-                    {
-                      itemType: 0,
-                      token: "0x0000000000000000000000000000000000000000",
-                      identifierOrCriteria: "0",
-                      startAmount: "99000000",
-                      endAmount: "99000000",
-                      recipient: "0xfba662e1a8e91a350702cf3b87d0c2d2fb4ba57f",
-                    },
-                  ],
-                  orderType: 1,
-                  startTime: "1759963495",
-                  endTime: "1775515495",
-                  zoneHash:
-                    "0x0000000000000000000000000000000000000000000000000000000000000000",
-                  salt: "27855337018906766782546881864045825683096516384821792734247163280454785126732",
-                  conduitKey:
-                    "0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000",
-                  totalOriginalConsiderationItems: "2",
-                },
+                parameters: ADVANCED_ORDER_PARAMETERS,
                 numerator: 1,
                 denominator: 1,
                 signature: "0x",
@@ -103,6 +210,8 @@ describe("SDK: FulfillmentManager", () => {
 
     // Mock Seaport
     mockSeaport = {
+      getOrderHash: orderHasher.getOrderHash,
+      getCounter: vi.fn().mockResolvedValue(0n),
       fulfillOrder: vi.fn().mockReturnValue({
         executeAllActions: vi.fn().mockResolvedValue("0xFulfillTxHash"),
       }),
@@ -147,7 +256,7 @@ describe("SDK: FulfillmentManager", () => {
   describe("fulfillOrder", () => {
     test("fulfills a listing order successfully", async () => {
       const result = await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: listingOrder,
         accountAddress: "0xBuyer",
       })
 
@@ -160,7 +269,7 @@ describe("SDK: FulfillmentManager", () => {
 
     test("fulfills an offer order successfully", async () => {
       const result = await fulfillmentManager.fulfillOrder({
-        order: mockOfferOrderV2,
+        order: offerOrder,
         accountAddress: "0xSeller",
       })
 
@@ -170,7 +279,7 @@ describe("SDK: FulfillmentManager", () => {
 
     test("fulfills criteria order with contract and tokenId", async () => {
       await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: listingOrder,
         accountAddress: "0xBuyer",
         assetContractAddress: "0xNFT",
         tokenId: "123",
@@ -186,44 +295,13 @@ describe("SDK: FulfillmentManager", () => {
       mockAPI.generateFulfillmentData.mockResolvedValue({
         fulfillmentData: {
           transaction: {
-            to: "0xSeaportAddress",
+            to: SEAPORT,
             value: 0,
             function:
               "fulfillAdvancedOrder(((address,address,(uint8,address,uint256,uint256,uint256)[],(uint8,address,uint256,uint256,uint256,address)[],uint8,uint256,uint256,bytes32,uint256,bytes32,uint256),uint120,uint120,bytes,bytes),(uint256,uint8,uint256,uint256,bytes32[])[],bytes32,address)",
             inputData: {
               advancedOrder: {
-                parameters: {
-                  offerer: "0xfba662e1a8e91a350702cf3b87d0c2d2fb4ba57f",
-                  zone: "0x0000000000000000000000000000000000000000",
-                  offer: [
-                    {
-                      itemType: 3,
-                      token: "0x88d381e3c65221abea498c69e990d1deb7bd3863",
-                      identifierOrCriteria: "1",
-                      startAmount: "10000",
-                      endAmount: "10000",
-                    },
-                  ],
-                  consideration: [
-                    {
-                      itemType: 0,
-                      token: "0x0000000000000000000000000000000000000000",
-                      identifierOrCriteria: "0",
-                      startAmount: "99000000",
-                      endAmount: "99000000",
-                      recipient: "0xfba662e1a8e91a350702cf3b87d0c2d2fb4ba57f",
-                    },
-                  ],
-                  orderType: 1,
-                  startTime: "1759963495",
-                  endTime: "1775515495",
-                  zoneHash:
-                    "0x0000000000000000000000000000000000000000000000000000000000000000",
-                  salt: "27855337018906766782546881864045825683096516384821792734247163280454785126732",
-                  conduitKey:
-                    "0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000",
-                  totalOriginalConsiderationItems: "2",
-                },
+                parameters: ADVANCED_ORDER_PARAMETERS,
                 numerator: 1,
                 denominator: 1,
                 signature: "0x",
@@ -240,7 +318,7 @@ describe("SDK: FulfillmentManager", () => {
       })
 
       await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: listingOrder,
         accountAddress: "0xBuyer",
       })
 
@@ -250,7 +328,7 @@ describe("SDK: FulfillmentManager", () => {
     test("fulfills order with recipient address", async () => {
       const recipientAddress = "0xRecipient123"
       await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: listingOrder,
         accountAddress: "0xBuyer",
         recipientAddress,
       })
@@ -267,10 +345,10 @@ describe("SDK: FulfillmentManager", () => {
       mockAPI.generateFulfillmentData.mockResolvedValue({
         fulfillmentData: {
           transaction: {
-            to: "0xSeaportAddress",
+            to: SEAPORT,
             value: 0,
             function: "fulfillBasicOrder_efficient_6GL6yc((uint256))",
-            inputData: { parameters: { offerer: "0xOfferer" } },
+            inputData: { parameters: BASIC_ORDER_PARAMETERS },
             calldataSuffix: "0xcdb44011",
           },
           orders: [{ signature: "0xSignature" }],
@@ -281,7 +359,7 @@ describe("SDK: FulfillmentManager", () => {
       mockContractCaller.encodeFunctionData.mockReturnValue("0xdeadbeef")
 
       await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: basicListingOrder,
         accountAddress: "0xBuyer",
       })
 
@@ -296,7 +374,7 @@ describe("SDK: FulfillmentManager", () => {
       mockContractCaller.encodeFunctionData.mockReturnValue("0xdeadbeef")
 
       await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: listingOrder,
         accountAddress: "0xBuyer",
       })
 
@@ -309,17 +387,14 @@ describe("SDK: FulfillmentManager", () => {
       mockAPI.generateFulfillmentData.mockResolvedValue({
         fulfillmentData: {
           transaction: {
-            to: "0xSeaportAddress",
+            to: SEAPORT,
             value: 0,
             function: "fulfillBasicOrder_efficient_6GL6yc((uint256))",
             inputData: {
               // The API names this `parameters`, not `basicOrderParameters`:
               // it serializes the decoded Seaport call, whose basic-order
               // variant carries a single `parameters` struct.
-              parameters: {
-                offerer: "0xOfferer",
-                zone: "0x0000000000000000000000000000000000000000",
-              },
+              parameters: BASIC_ORDER_PARAMETERS,
             },
           },
           orders: [{ signature: "0xAliasSignature" }],
@@ -332,7 +407,7 @@ describe("SDK: FulfillmentManager", () => {
       mockContractCaller.encodeFunctionData.mockReturnValue("0xAliasEncoded")
 
       const result = await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: basicListingOrder,
         accountAddress: "0xBuyer",
       })
 
@@ -350,27 +425,13 @@ describe("SDK: FulfillmentManager", () => {
       mockAPI.generateFulfillmentData.mockResolvedValue({
         fulfillmentData: {
           transaction: {
-            to: "0xSeaportAddress",
+            to: SEAPORT,
             value: 0,
             function:
               "fulfillOrder(((address,address,(uint8,address,uint256,uint256,uint256)[],(uint8,address,uint256,uint256,uint256,address)[],uint8,uint256,uint256,bytes32,uint256,bytes32,uint256),bytes),bytes32)",
             inputData: {
               order: {
-                parameters: {
-                  offerer: "0xOfferer",
-                  zone: "0x0000000000000000000000000000000000000000",
-                  offer: [],
-                  consideration: [],
-                  orderType: 0,
-                  startTime: "0",
-                  endTime: "9999999999",
-                  zoneHash:
-                    "0x0000000000000000000000000000000000000000000000000000000000000000",
-                  salt: "0",
-                  conduitKey:
-                    "0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000",
-                  totalOriginalConsiderationItems: 0,
-                },
+                parameters: ADVANCED_ORDER_PARAMETERS,
                 signature: "0x",
               },
               fulfillerConduitKey:
@@ -390,7 +451,7 @@ describe("SDK: FulfillmentManager", () => {
       )
 
       await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: listingOrder,
         accountAddress: "0xBuyer",
       })
 
@@ -423,7 +484,7 @@ describe("SDK: FulfillmentManager", () => {
 
       try {
         await fulfillmentManager.fulfillOrder({
-          order: mockOrderV2,
+          order: listingOrder,
           accountAddress: "0xBuyer",
         })
         throw new Error("Expected error to be thrown")
@@ -451,7 +512,7 @@ describe("SDK: FulfillmentManager", () => {
 
     test("handles transaction response as ContractTransactionResponse", async () => {
       const result = await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: listingOrder,
         accountAddress: "0xBuyer",
       })
 
@@ -467,6 +528,33 @@ describe("SDK: FulfillmentManager", () => {
     const CONDUIT_ADDRESS = "0x1e0049783f008a0085193e00003d00cd54003c71"
     const USDG = "0x1234567890123456789012345678901234567890"
     const SELLER = "0xfba662e1a8e91a350702cf3b87d0c2d2fb4ba57f"
+    const ERC20_ORDER_PARAMETERS = {
+      ...ADVANCED_ORDER_PARAMETERS,
+      offerer: SELLER,
+      consideration: [
+        {
+          itemType: 1,
+          token: USDG,
+          identifierOrCriteria: "0",
+          startAmount: "351000000",
+          endAmount: "351000000",
+          recipient: SELLER,
+        },
+        {
+          itemType: 1,
+          token: USDG,
+          identifierOrCriteria: "0",
+          startAmount: "9000000",
+          endAmount: "9000000",
+          recipient: "0x0000a26b00c1f0df003000390027140000faa719",
+        },
+      ],
+      totalOriginalConsiderationItems: 2,
+    }
+    const erc20Order = {
+      ...mockOrderV2,
+      orderHash: orderHashOf(ERC20_ORDER_PARAMETERS),
+    }
 
     /** Price the mock listing in USDG: 351 to the seller plus a 9 USDG fee. */
     function priceInErc20({
@@ -477,12 +565,13 @@ describe("SDK: FulfillmentManager", () => {
       mockAPI.generateFulfillmentData.mockResolvedValue({
         fulfillmentData: {
           transaction: {
-            to: "0xSeaportAddress",
+            to: SEAPORT,
             value: "0",
             function: "fulfillAdvancedOrder(...)",
             inputData: {
               advancedOrder: {
                 parameters: {
+                  ...ADVANCED_ORDER_PARAMETERS,
                   offerer: SELLER,
                   consideration: [
                     {
@@ -502,6 +591,7 @@ describe("SDK: FulfillmentManager", () => {
                       recipient: "0x0000a26b00c1f0df003000390027140000faa719",
                     },
                   ],
+                  totalOriginalConsiderationItems: 2,
                 },
                 numerator: 1,
                 denominator: 1,
@@ -552,7 +642,7 @@ describe("SDK: FulfillmentManager", () => {
       stubErc20Reads({ balance: 500000000n, allowance: 360000000n })
 
       const result = await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: erc20Order,
         accountAddress: "0xBuyer",
       })
 
@@ -567,7 +657,7 @@ describe("SDK: FulfillmentManager", () => {
 
       await expect(
         fulfillmentManager.fulfillOrder({
-          order: mockOrderV2,
+          order: erc20Order,
           accountAddress: "0xBuyer",
         }),
       ).rejects.toThrow(/not approved/)
@@ -580,7 +670,7 @@ describe("SDK: FulfillmentManager", () => {
 
       await expect(
         fulfillmentManager.fulfillOrder({
-          order: mockOrderV2,
+          order: erc20Order,
           accountAddress: "0xBuyer",
         }),
       ).rejects.toThrow(`approve(${CONDUIT_ADDRESS}, 360000000)`)
@@ -592,7 +682,7 @@ describe("SDK: FulfillmentManager", () => {
 
       await expect(
         fulfillmentManager.fulfillOrder({
-          order: mockOrderV2,
+          order: erc20Order,
           accountAddress: "0xBuyer",
         }),
       ).rejects.toThrow(/Insufficient/)
@@ -608,10 +698,10 @@ describe("SDK: FulfillmentManager", () => {
 
       await expect(
         fulfillmentManager.fulfillOrder({
-          order: mockOrderV2,
+          order: erc20Order,
           accountAddress: "0xBuyer",
         }),
-      ).rejects.toThrow("0xSeaportAddress")
+      ).rejects.toThrow(SEAPORT)
 
       // A zero key means Seaport transfers directly, so no conduit is resolved.
       expect(
@@ -630,7 +720,7 @@ describe("SDK: FulfillmentManager", () => {
 
       await expect(
         fulfillmentManager.fulfillOrder({
-          order: mockOrderV2,
+          order: erc20Order,
           accountAddress: "0xBuyer",
         }),
       ).rejects.toThrow(CONDUIT_ADDRESS)
@@ -652,7 +742,7 @@ describe("SDK: FulfillmentManager", () => {
       readContract.mockRejectedValue(new Error("RPC unavailable"))
 
       const result = await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: erc20Order,
         accountAddress: "0xBuyer",
       })
 
@@ -668,7 +758,7 @@ describe("SDK: FulfillmentManager", () => {
       ).readContract
 
       await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: listingOrder,
         accountAddress: "0xBuyer",
       })
 
@@ -679,7 +769,7 @@ describe("SDK: FulfillmentManager", () => {
   describe("fulfillOrder with remaining_quantity", () => {
     test("defaults to 1 when unitsToFill not specified for Listing", async () => {
       await fulfillmentManager.fulfillOrder({
-        order: mockListing,
+        order: { ...mockListing, orderHash: ORDER_HASH },
         accountAddress: "0xBuyer",
       })
 
@@ -691,7 +781,7 @@ describe("SDK: FulfillmentManager", () => {
 
     test("defaults to 1 when unitsToFill not specified for partially filled Listing", async () => {
       await fulfillmentManager.fulfillOrder({
-        order: mockListingPartiallyFilled,
+        order: { ...mockListingPartiallyFilled, orderHash: ORDER_HASH },
         accountAddress: "0xBuyer",
       })
 
@@ -703,7 +793,7 @@ describe("SDK: FulfillmentManager", () => {
 
     test("defaults to 1 when unitsToFill not specified for OrderV2", async () => {
       await fulfillmentManager.fulfillOrder({
-        order: mockOrderV2,
+        order: listingOrder,
         accountAddress: "0xBuyer",
       })
 
@@ -715,7 +805,7 @@ describe("SDK: FulfillmentManager", () => {
 
     test("passes unitsToFill when specified", async () => {
       const order = {
-        orderHash: "0x789",
+        orderHash: ORDER_HASH,
         chain: "ethereum",
         protocolData: {
           parameters: mockOrderComponents,
@@ -741,6 +831,291 @@ describe("SDK: FulfillmentManager", () => {
       expect(mockSigner.sendTransaction).toHaveBeenCalledTimes(1)
       const apiCall = mockAPI.generateFulfillmentData.mock.calls[0]
       expect(apiCall[6]).toBe("5") // unitsToFill passed to API
+    })
+  })
+
+  describe("fulfillOrder rejects fulfillment data that does not match the order", () => {
+    const MALLORY = "0x000000000000000000000000000000000000bad1"
+    const ALICE = "0x000000000000000000000000000000000000a11c"
+    const ADVANCED_FUNCTION = "fulfillAdvancedOrder(...)"
+
+    function advancedTransaction(
+      overrides: Record<string, unknown> = {},
+      inputOverrides: Record<string, unknown> = {},
+    ) {
+      return {
+        to: SEAPORT,
+        value: "99000000",
+        function: ADVANCED_FUNCTION,
+        inputData: {
+          advancedOrder: {
+            parameters: ADVANCED_ORDER_PARAMETERS,
+            numerator: 1,
+            denominator: 1,
+            signature: "0x",
+            extraData: "0x",
+          },
+          criteriaResolvers: [],
+          fulfillerConduitKey: ZERO_BYTES32,
+          recipient: ZERO_ADDRESS,
+          ...inputOverrides,
+        },
+        ...overrides,
+      }
+    }
+
+    function basicTransaction(overrides: Record<string, unknown> = {}) {
+      return {
+        to: SEAPORT,
+        value: "1000000000000000000",
+        function: "fulfillBasicOrder_efficient_6GL6yc((address,uint256))",
+        inputData: { parameters: BASIC_ORDER_PARAMETERS },
+        ...overrides,
+      }
+    }
+
+    function respondWith(transaction: Record<string, unknown>) {
+      mockAPI.generateFulfillmentData.mockResolvedValue({
+        fulfillmentData: { transaction, orders: [] },
+      })
+    }
+
+    function encodeFunctionData() {
+      return (
+        mockContext.contractCaller as unknown as {
+          encodeFunctionData: ReturnType<typeof vi.fn>
+        }
+      ).encodeFunctionData
+    }
+
+    async function expectRejected(
+      message: RegExp,
+      args: Partial<Parameters<FulfillmentManager["fulfillOrder"]>[0]> = {},
+    ) {
+      await expect(
+        fulfillmentManager.fulfillOrder({
+          order: listingOrder,
+          accountAddress: "0xBuyer",
+          ...args,
+        }),
+      ).rejects.toThrow(message)
+      expect(encodeFunctionData()).not.toHaveBeenCalled()
+      expect(mockSigner.sendTransaction).not.toHaveBeenCalled()
+    }
+
+    test("sends a matching transaction to the order's Seaport contract", async () => {
+      respondWith(advancedTransaction())
+
+      await fulfillmentManager.fulfillOrder({
+        order: listingOrder,
+        accountAddress: "0xBuyer",
+      })
+
+      const sent = mockSigner.sendTransaction.mock.calls[0][0]
+      expect(sent.to).toBe(SEAPORT)
+      expect(sent.value).toBe(99000000n)
+    })
+
+    test("rejects a transaction.to that is not a Seaport contract", async () => {
+      respondWith(advancedTransaction({ to: MALLORY }))
+      await expectRejected(/Unsupported protocol address/)
+    })
+
+    test("rejects a transaction.to that differs from the order's protocol address", async () => {
+      respondWith(advancedTransaction({ to: ALTERNATE_SEAPORT_V1_6_ADDRESS }))
+      await expectRejected(/does not match the order's protocol address/)
+    })
+
+    test.each([
+      "incrementCounter()",
+      "cancel((address,address,(uint8,address,uint256,uint256,uint256)[])[])",
+      "matchAdvancedOrders(...)",
+      "fulfillAvailableAdvancedOrders(...)",
+      "validate(...)",
+    ])("rejects the non-fulfill Seaport function %s", async fn => {
+      respondWith(advancedTransaction({ function: fn }))
+      await expectRejected(/unexpected Seaport function/)
+    })
+
+    test("rejects an order whose hash differs from the requested order", async () => {
+      respondWith(
+        advancedTransaction(
+          {},
+          {
+            advancedOrder: {
+              parameters: {
+                ...ADVANCED_ORDER_PARAMETERS,
+                consideration: [
+                  {
+                    ...ADVANCED_ORDER_PARAMETERS.consideration[0],
+                    recipient: MALLORY,
+                  },
+                ],
+              },
+              numerator: 1,
+              denominator: 1,
+              signature: "0x",
+              extraData: "0x",
+            },
+          },
+        ),
+      )
+      await expectRejected(/does not match the requested order/)
+    })
+
+    test("rejects an order whose offerer is the fulfilling account", async () => {
+      // An order offered by the caller skips Seaport's signature check, so the
+      // API could otherwise spend the caller's approved assets.
+      const victimOrder = { ...ADVANCED_ORDER_PARAMETERS, offerer: ALICE }
+      respondWith(
+        advancedTransaction(
+          { value: "0" },
+          {
+            advancedOrder: {
+              parameters: victimOrder,
+              numerator: 1,
+              denominator: 1,
+              signature: "0x",
+              extraData: "0x",
+            },
+          },
+        ),
+      )
+      await expectRejected(/offerer is the fulfilling account/, {
+        order: { ...listingOrder, orderHash: orderHashOf(victimOrder) },
+        accountAddress: ALICE,
+      })
+    })
+
+    test("rejects a value larger than the order's native price", async () => {
+      respondWith(advancedTransaction({ value: "99000001" }))
+      await expectRejected(/exceeds the order's native price 99000000/)
+    })
+
+    test("rejects a recipient other than the fulfiller", async () => {
+      respondWith(advancedTransaction({}, { recipient: MALLORY }))
+      await expectRejected(/recipient/)
+    })
+
+    test("accepts the recipientAddress the caller asked for", async () => {
+      respondWith(advancedTransaction({}, { recipient: ALICE }))
+      await fulfillmentManager.fulfillOrder({
+        order: listingOrder,
+        accountAddress: "0xBuyer",
+        recipientAddress: ALICE,
+      })
+      expect(mockSigner.sendTransaction).toHaveBeenCalledTimes(1)
+    })
+
+    test("rejects tips appended to the signed order", async () => {
+      const withTip = {
+        ...ADVANCED_ORDER_PARAMETERS,
+        consideration: [
+          ...ADVANCED_ORDER_PARAMETERS.consideration,
+          {
+            itemType: 1,
+            token: "0x1234567890123456789012345678901234567890",
+            identifierOrCriteria: "0",
+            startAmount: "1000000",
+            endAmount: "1000000",
+            recipient: MALLORY,
+          },
+        ],
+      }
+      respondWith(
+        advancedTransaction(
+          {},
+          {
+            advancedOrder: {
+              parameters: withTip,
+              numerator: 1,
+              denominator: 1,
+              signature: "0x",
+              extraData: "0x",
+            },
+          },
+        ),
+      )
+      await expectRejected(/appended to the signed order/)
+    })
+
+    test("rejects a criteria resolver for a token other than tokenId", async () => {
+      respondWith(
+        advancedTransaction(
+          { value: "0" },
+          {
+            criteriaResolvers: [
+              {
+                orderIndex: 0,
+                side: 1,
+                index: 0,
+                identifier: "2",
+                criteriaProof: [],
+              },
+            ],
+          },
+        ),
+      )
+      await expectRejected(/criteria resolver/, {
+        order: offerOrder,
+        accountAddress: "0xSeller",
+        assetContractAddress: "0x88d381e3c65221abea498c69e990d1deb7bd3863",
+        tokenId: "1",
+      })
+    })
+
+    test("reads the offerer's counter onchain when the order has no protocolData", async () => {
+      respondWith(advancedTransaction())
+      const { protocolData: _protocolData, ...withoutProtocolData } = {
+        ...mockListing,
+        orderHash: ORDER_HASH,
+      }
+
+      await fulfillmentManager.fulfillOrder({
+        order: withoutProtocolData,
+        accountAddress: "0xBuyer",
+      })
+
+      expect(mockSeaport.getCounter).toHaveBeenCalledWith(SELLER_ADDRESS)
+      expect(mockSigner.sendTransaction).toHaveBeenCalledTimes(1)
+    })
+
+    describe("basic orders", () => {
+      test("sends a matching basic order at its full price", async () => {
+        respondWith(basicTransaction())
+
+        await fulfillmentManager.fulfillOrder({
+          order: basicListingOrder,
+          accountAddress: "0xBuyer",
+        })
+
+        const sent = mockSigner.sendTransaction.mock.calls[0][0]
+        expect(sent.to).toBe(SEAPORT)
+        expect(sent.value).toBe(1000000000000000000n)
+      })
+
+      test("rejects a basic order with a redirected fee recipient", async () => {
+        respondWith(
+          basicTransaction({
+            inputData: {
+              parameters: {
+                ...BASIC_ORDER_PARAMETERS,
+                additionalRecipients: [
+                  { amount: "25000000000000000", recipient: MALLORY },
+                ],
+              },
+            },
+          }),
+        )
+        await expectRejected(/does not match the requested order/, {
+          order: basicListingOrder,
+        })
+      })
+
+      test("rejects a value larger than the basic order's price", async () => {
+        respondWith(basicTransaction({ value: "1000000000000000001" }))
+        await expectRejected(/exceeds/, { order: basicListingOrder })
+      })
     })
   })
 
