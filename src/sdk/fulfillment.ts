@@ -11,6 +11,11 @@ import {
   toBigInt,
 } from "../orders/erc20Fulfillment"
 import {
+  parseFulfillmentCall,
+  requireCallMatchesOrder,
+  requireTransactionTarget,
+} from "../orders/fulfillmentValidation"
+import {
   computePrivateListingValue,
   constructPrivateListingCounterOrder,
   getPrivateListingFulfillments,
@@ -31,8 +36,6 @@ import {
 } from "../utils/utils"
 import type { SDKContext } from "./context"
 import type { OrdersManager } from "./orders"
-
-const FULFILL_BASIC_ORDER_ALIAS = "fulfillBasicOrder_efficient_6GL6yc"
 
 /**
  * Manager for order fulfillment and validation operations.
@@ -123,6 +126,13 @@ export class FulfillmentManager {
    * @throws Error if the order's protocol address is not supported by OpenSea. See {@link isValidProtocol}.
    * @throws Error if a signer is not provided (read-only providers cannot fulfill orders).
    * @throws Error if the order hash is not available.
+   * @throws Error if the API's fulfillment transaction targets a different
+   * contract than the order's Seaport, calls a Seaport function other than
+   * `fulfillBasicOrder`, `fulfillOrder` or `fulfillAdvancedOrder`, fills an
+   * order whose hash is not `order.orderHash`, or sends more native value than
+   * the order costs. Nothing is sent in that case.
+   * @throws Error if `overrides` sets `to`, `data` or `value` (except for
+   * private listings, which compute their own value).
    */
   async fulfillOrder({
     order,
@@ -169,6 +179,17 @@ export class FulfillmentManager {
       })
     }
 
+    // Overrides are spread after the validated fields, so they must not be able
+    // to replace them.
+    const overridden = ["to", "data", "value"].filter(
+      (field) => overrides?.[field] !== undefined,
+    )
+    if (overridden.length > 0) {
+      throw new Error(
+        `overrides cannot set ${overridden.join(", ")}; fulfillOrder derives them from the validated order`,
+      )
+    }
+
     // Get fulfillment data from the API
     if (!orderHash) {
       throw new Error("Order hash is required to fulfill an order")
@@ -190,58 +211,41 @@ export class FulfillmentManager {
       includeOptionalCreatorFees,
     )
 
-    // Use the transaction data returned by the API
+    // The response is untrusted: confirm it calls a supported Seaport contract
+    // to fill exactly this order before anything is signed.
     const transaction = fulfillmentData.fulfillmentData.transaction
-    const inputData = transaction.inputData
-
-    // Extract function name and build parameters array in correct order
-    const rawFunctionName = transaction.function.split("(")[0]
-    const functionName =
-      rawFunctionName === FULFILL_BASIC_ORDER_ALIAS
-        ? "fulfillBasicOrder"
-        : rawFunctionName
-    let params: unknown[]
-
-    // Order parameters based on the function being called
-    if (
-      functionName === "fulfillAdvancedOrder" &&
-      "advancedOrder" in inputData
-    ) {
-      params = [
-        inputData.advancedOrder,
-        inputData.criteriaResolvers || [],
-        inputData.fulfillerConduitKey ||
-          "0x0000000000000000000000000000000000000000000000000000000000000000",
-        inputData.recipient,
-      ]
-    } else if (
-      (functionName === "fulfillBasicOrder" ||
-        rawFunctionName === FULFILL_BASIC_ORDER_ALIAS) &&
-      "parameters" in inputData
-    ) {
-      params = [inputData.parameters]
-    } else if (functionName === "fulfillOrder" && "order" in inputData) {
-      params = [
-        inputData.order,
-        inputData.fulfillerConduitKey ||
-          "0x0000000000000000000000000000000000000000000000000000000000000000",
-      ]
-    } else {
-      // Fallback: try to use values in object order
-      params = Object.values(inputData)
-    }
+    const seaportAddress = requireTransactionTarget(
+      transaction.to,
+      protocolAddress,
+    )
+    const call = parseFulfillmentCall(
+      transaction.function,
+      transaction.inputData,
+    )
+    const counter = await this.readCounter(seaportAddress, call.order.offerer)
+    const value = requireCallMatchesOrder(call, {
+      orderHash,
+      counter,
+      accountAddress,
+      recipientAddress,
+      tokenId,
+      includeOptionalCreatorFees,
+      value: transaction.value,
+    })
 
     // ERC20-priced listings send no native value; Seaport pulls the payment from
     // the buyer instead, which reverts with a bare "execution reverted" when the
     // spender has not been approved. Catch that before spending gas.
-    await this.requireErc20PaymentIsSpendable(inputData, transaction.to, {
-      accountAddress,
-    })
+    await this.requireErc20PaymentIsSpendable(
+      transaction.inputData,
+      seaportAddress,
+      { accountAddress },
+    )
 
     const encodedData = this.context.contractCaller.encodeFunctionData({
       abi: SeaportABI,
-      functionName,
-      args: params,
+      functionName: call.functionName,
+      args: call.args,
     })
 
     // Re-encoding from inputData drops the attribution suffix the API appended
@@ -254,8 +258,8 @@ export class FulfillmentManager {
       throw new Error("A signer is required to fulfill orders")
     }
     const tx = await wallet.signer.sendTransaction({
-      to: transaction.to,
-      value: BigInt(transaction.value),
+      to: seaportAddress,
+      value,
       data,
       overrides: overrides as Record<string, unknown>,
     })
@@ -266,6 +270,36 @@ export class FulfillmentManager {
       "Fulfilling order",
     )
     return tx.hash
+  }
+
+  /**
+   * Read the offerer's Seaport counter, which is part of the order hash. Throws
+   * when it cannot be read, since the order cannot be checked without it.
+   */
+  private async readCounter(
+    seaportAddress: string,
+    offerer: string,
+  ): Promise<bigint> {
+    let raw: unknown
+    try {
+      raw = await this.context.contractCaller.readContract({
+        address: seaportAddress,
+        abi: SeaportABI,
+        functionName: "getCounter",
+        args: [offerer],
+      })
+    } catch (error) {
+      throw new Error(
+        `Could not read the Seaport counter for ${offerer} to verify the fulfillment order: ${error}`,
+      )
+    }
+    const counter = toBigInt(raw)
+    if (counter === null) {
+      throw new Error(
+        `Could not read the Seaport counter for ${offerer} to verify the fulfillment order`,
+      )
+    }
+    return counter
   }
 
   /**
