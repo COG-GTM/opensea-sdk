@@ -159,6 +159,22 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Other chains
+
+Pass any `Chain` value to target a different network. For example, Mantle
+(chain id `5000`, native gas token MNT, offers in WMNT):
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import { mantle } from 'viem/chains'
+import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
+
+const publicClient = createPublicClient({ chain: mantle, transport: http() })
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mantle, apiKey: 'YOUR_API_KEY' })
+```
+
+See the `Chain` enum in [`src/types.ts`](src/types.ts) for every supported chain.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
