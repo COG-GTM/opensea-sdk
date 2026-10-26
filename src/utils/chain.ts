@@ -151,6 +151,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x3bd359c1119da7da1d913d1c4d2b7c461115433a" // WMON
     case Chain.Robinhood:
       return "0x0bd7d308f8e1639fab988df18a8011f41eacad73" // WETH
+    case Chain.Sonic:
+      return "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38" // wS
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -235,6 +237,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return ZERO_ADDRESS
     case Chain.StableChain:
       return ZERO_ADDRESS
+    case Chain.Sonic:
+      return ZERO_ADDRESS // S
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown listing currency for ${exhaustiveChain}`)

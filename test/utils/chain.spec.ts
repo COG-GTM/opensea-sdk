@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Sonic, "146"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -256,6 +257,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns wS for Sonic", () => {
+      expect(getOfferPaymentToken(Chain.Sonic)).toBe(
+        "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38",
+      )
+    })
+
     test("throws for Solana", () => {
       expect(() => getOfferPaymentToken(Chain.Solana)).toThrow(
         "Chain solana is not supported for OpenSea Seaport offers",
@@ -410,6 +417,10 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns native S (0x0) for Sonic", () => {
+      expect(getListingPaymentToken(Chain.Sonic)).toBe(ZERO_ADDRESS)
+    })
+
     test("throws for Solana", () => {
       expect(() => getListingPaymentToken(Chain.Solana)).toThrow(
         "Chain solana is not supported for OpenSea Seaport listings",
@@ -482,6 +493,12 @@ describe("Utils: chain", () => {
       const result = getDefaultConduit(Chain.MegaETH)
       expect(result.key).toBe(ALTERNATE_CONDUIT_KEY)
       expect(result.address).toBe(ALTERNATE_CONDUIT_ADDRESS)
+    })
+
+    test("returns the canonical OpenSea conduit for Sonic", () => {
+      const result = getDefaultConduit(Chain.Sonic)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
     })
 
     test("returns default OpenSea conduit for other chains", () => {
@@ -675,6 +692,12 @@ describe("Utils: chain", () => {
           getOfferPaymentToken(chain),
         )
       }
+    })
+
+    test("returns wS for Sonic (same as offer token)", () => {
+      expect(getNativeWrapTokenAddress(Chain.Sonic)).toBe(
+        "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38",
+      )
     })
 
     test("throws for Stable Chain", () => {
