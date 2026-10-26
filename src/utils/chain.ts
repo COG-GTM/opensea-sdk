@@ -159,6 +159,9 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f" // WETH
     case Chain.Mantle:
       return "0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8" // WMNT
+    // Katana's WETH is Vault Bridge ETH (vbETH), not the OP Stack predeploy.
+    case Chain.Katana:
+      return "0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62" // WETH (vbETH)
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -219,6 +222,7 @@ export const getListingPaymentToken = (chain: Chain) => {
     case Chain.MegaETH:
     case Chain.Ink:
     case Chain.Linea:
+    case Chain.Katana:
       return "0x0000000000000000000000000000000000000000" // ETH
     case Chain.Polygon:
       return "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619" // WETH

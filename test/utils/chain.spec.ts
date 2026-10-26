@@ -103,6 +103,7 @@ describe("Utils: chain", () => {
       [Chain.Sonic, "146"],
       [Chain.Linea, "59144"],
       [Chain.Mantle, "5000"],
+      [Chain.Katana, "747474"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -278,6 +279,13 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns WETH (vbETH) for Katana, not the OP Stack predeploy", () => {
+      expect(getOfferPaymentToken(Chain.Katana)).toBe(
+        "0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62",
+      )
+      expect(getOfferPaymentTokenDecimals(Chain.Katana)).toBe(18)
+    })
+
     test("throws for Solana", () => {
       expect(() => getOfferPaymentToken(Chain.Solana)).toThrow(
         "Chain solana is not supported for OpenSea Seaport offers",
@@ -421,6 +429,10 @@ describe("Utils: chain", () => {
       expect(getListingPaymentToken(Chain.Arc)).toBe(ZERO_ADDRESS)
     })
 
+    test("returns native ETH (0x0) for Katana", () => {
+      expect(getListingPaymentToken(Chain.Katana)).toBe(ZERO_ADDRESS)
+    })
+
     test("returns WAVAX for Avalanche", () => {
       expect(getListingPaymentToken(Chain.Avalanche)).toBe(
         "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
@@ -555,6 +567,12 @@ describe("Utils: chain", () => {
 
     test("returns canonical OpenSea conduit for Linea", () => {
       const result = getDefaultConduit(Chain.Linea)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
+    test("returns the canonical OpenSea conduit for Katana", () => {
+      const result = getDefaultConduit(Chain.Katana)
       expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
     })
@@ -706,6 +724,17 @@ describe("Utils: chain", () => {
     })
   })
 
+  describe("Katana protocol defaults", () => {
+    test("uses cross-chain Seaport 1.6, signed zone v2 and the OpenSea fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Katana)).toBe(false)
+      expect(getSeaportAddress(Chain.Katana)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Katana)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Katana)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+  })
+
   describe("usesAlternateProtocol", () => {
     test("returns true for Gunzilla", () => {
       expect(usesAlternateProtocol(Chain.Gunzilla)).toBe(true)
@@ -811,6 +840,12 @@ describe("Utils: chain", () => {
     test("throws for Arc", () => {
       expect(() => getNativeWrapTokenAddress(Chain.Arc)).toThrow(
         "0x3600000000000000000000000000000000000000",
+      )
+    })
+
+    test("returns WETH (vbETH) for Katana", () => {
+      expect(getNativeWrapTokenAddress(Chain.Katana)).toBe(
+        "0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62",
       )
     })
   })
