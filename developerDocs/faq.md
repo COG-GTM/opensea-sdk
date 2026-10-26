@@ -21,6 +21,8 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
+Recently added: Plasma (`Chain.Plasma`), Sonic (`Chain.Sonic`), Linea (`Chain.Linea`), Mantle (`Chain.Mantle`), Katana (`Chain.Katana`) and Celo (`Chain.Celo`). See [Newer chains](../README.md#newer-chains) for their chain ids and default currencies.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
