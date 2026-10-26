@@ -162,7 +162,17 @@ const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YO
 ### Using another chain (Celo)
 
 Pass any `Chain` value to target that network. For example, Celo (`Chain.Celo`,
-API slug `celo`, chain id `42220`) with viem's `celo` chain:
+API slug `celo`, chain id `42220`) with ethers:
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://forno.celo.org");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Celo, apiKey: "YOUR_API_KEY" });
+```
+
+Or with viem, import the `celo` chain from `viem/chains`:
 
 ```typescript
 import { createPublicClient, http } from 'viem'
