@@ -93,6 +93,37 @@ const openseaSDK = new OpenSeaSDK(
 );
 ```
 
+## Other chains
+
+The `chain` option selects the network. Pass the matching provider or viem chain. For Mantle (chain id 5000):
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://rpc.mantle.xyz");
+
+const openseaSDK = new OpenSeaSDK(provider, {
+  chain: Chain.Mantle,
+  apiKey: "YOUR_API_KEY",
+});
+```
+
+With viem, use `mantle` from `viem/chains`:
+
+```typescript
+import { createPublicClient, http } from "viem";
+import { mantle } from "viem/chains";
+import { OpenSeaSDK, Chain } from "@opensea/sdk/viem";
+
+const publicClient = createPublicClient({ chain: mantle, transport: http() });
+
+const openseaSDK = new OpenSeaSDK(
+  { publicClient },
+  { chain: Chain.Mantle, apiKey: "YOUR_API_KEY" },
+);
+```
+
 ## Wallet
 
 Using a read-only provider won't let you authorize transactions, which are needed when approving and trading assets and currency. To make transactions, you need a signer (ethers) or wallet client (viem).
