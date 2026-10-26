@@ -10,7 +10,7 @@ an explicit "default applies".
 | # | Concern | File | What Base does | What a new chain needs |
 |---|---------|------|----------------|------------------------|
 | 1 | `Chain` enum / API slug | `src/types.ts` | `Base = "base"` | Add `Name = "<api_slug>"`. The slug is the OpenSea API chain name (snake_case, e.g. `bera_chain`). `_AssertAPIChainsCovered` only checks that every `ChainIdentifier` from `@opensea/api-types` has an enum value, so the SDK may list a chain before api-types does. |
-| 2 | Numeric chain id | `src/utils/chainIds.generated.ts` | `base: "8453"` | Add `<slug>: "<id>"`, kept sorted by numeric id. This fork has no `pnpm sync-chains` script, so edit the map by hand and keep the "generated" ordering. Read through `getChainId`. |
+| 2 | Numeric chain id | `src/utils/chainIds.generated.ts` | `base: "8453"` | Add `<slug>: "<id>"`, kept sorted by numeric id. This mirror has no `pnpm sync-chains` script, so a mirror PR edits the map by hand (provisional). Before release, the same chain must also be added upstream in the monorepo's `scripts/chain-data.json`, followed by `pnpm sync-chains` and `pnpm format`. Otherwise the next sync regenerates this file without the chain and `getChainId` throws. Read through `getChainId`. |
 | 3 | Offer currency (wrapped native) + decimals | `src/utils/chain.ts` `getOfferPaymentToken` | WETH `0x4200…0006` (shared OP-Stack predeploy) | Add a `case Chain.X:` that returns the wrapped native ERC-20. Decimals default to `NATIVE_DECIMALS` (18) via `getOfferPaymentTokenDecimals`. Only chains whose offers spend a native stablecoin (Arc, StableChain) go in `NATIVE_STABLECOIN_OFFER_TOKENS`. |
 | 4 | Listing currency (native) | `src/utils/chain.ts` `getListingPaymentToken` | `ZERO_ADDRESS` (native ETH) | Add a `case`. Native gas token = `ZERO_ADDRESS`. Both switches end in a `never`-typed `default`, so a missing case fails `check-types`. |
 | 5 | Wrap/unwrap token | `src/utils/chain.ts` `getNativeWrapTokenAddress` | falls through to the offer token | Usually nothing. Add a case only if wrap differs from the offer token (Polygon/WPOL). |
@@ -44,7 +44,11 @@ Checks: `npm run type-check && npm run lint && npm test`.
 - Use protocol addresses (conduit, Seaport, zone, fee recipient) only through
   the `src/constants.ts` exports.
 
-## 4. PR stack per chain
+## 4. Upstream (monorepo) follow-up
+
+This repo mirrors an internal monorepo. Each chain PR body must list the follow-up: add the chain to the monorepo's `scripts/chain-data.json`, then run `pnpm sync-chains && pnpm format`, so the generated `CHAIN_ID_MAP` keeps it.
+
+## 5. PR stack per chain
 
 1. `devin/<ticket>-<slug>-sdk` → SDK support and tests (this repo).
 2. `devin/<ticket>-<slug>-docs` → README/developerDocs, based on (1).
