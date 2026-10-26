@@ -11,11 +11,27 @@ import {
   toBigInt,
 } from "../orders/erc20Fulfillment"
 import {
+  isSameAddress,
+  isZeroAddress,
+  maxNativePayment,
+  parseFulfillmentCall,
+  rejectFulfillmentData,
+  requireCriteriaResolversMatch,
+  requireFillWithinUnits,
+  requireFulfillmentTarget,
+  requireTipsWithinCap,
+  toOrderComponents,
+} from "../orders/fulfillmentValidation"
+import {
   computePrivateListingValue,
   constructPrivateListingCounterOrder,
   getPrivateListingFulfillments,
 } from "../orders/privateListings"
-import { OrderType, type OrderV2 } from "../orders/types"
+import {
+  type FulfillmentDataResponse,
+  OrderType,
+  type OrderV2,
+} from "../orders/types"
 import { DEFAULT_SEAPORT_CONTRACT_ADDRESS } from "../orders/utils"
 import {
   type Amount,
@@ -31,8 +47,6 @@ import {
 } from "../utils/utils"
 import type { SDKContext } from "./context"
 import type { OrdersManager } from "./orders"
-
-const FULFILL_BASIC_ORDER_ALIAS = "fulfillBasicOrder_efficient_6GL6yc"
 
 /**
  * Manager for order fulfillment and validation operations.
@@ -190,46 +204,22 @@ export class FulfillmentManager {
       includeOptionalCreatorFees,
     )
 
-    // Use the transaction data returned by the API
+    // The response is untrusted: check it fills exactly the requested order on
+    // the order's own Seaport contract before anything is signed.
     const transaction = fulfillmentData.fulfillmentData.transaction
     const inputData = transaction.inputData
-
-    // Extract function name and build parameters array in correct order
-    const rawFunctionName = transaction.function.split("(")[0]
-    const functionName =
-      rawFunctionName === FULFILL_BASIC_ORDER_ALIAS
-        ? "fulfillBasicOrder"
-        : rawFunctionName
-    let params: unknown[]
-
-    // Order parameters based on the function being called
-    if (
-      functionName === "fulfillAdvancedOrder" &&
-      "advancedOrder" in inputData
-    ) {
-      params = [
-        inputData.advancedOrder,
-        inputData.criteriaResolvers || [],
-        inputData.fulfillerConduitKey ||
-          "0x0000000000000000000000000000000000000000000000000000000000000000",
-        inputData.recipient,
-      ]
-    } else if (
-      (functionName === "fulfillBasicOrder" ||
-        rawFunctionName === FULFILL_BASIC_ORDER_ALIAS) &&
-      "parameters" in inputData
-    ) {
-      params = [inputData.parameters]
-    } else if (functionName === "fulfillOrder" && "order" in inputData) {
-      params = [
-        inputData.order,
-        inputData.fulfillerConduitKey ||
-          "0x0000000000000000000000000000000000000000000000000000000000000000",
-      ]
-    } else {
-      // Fallback: try to use values in object order
-      params = Object.values(inputData)
-    }
+    const { functionName, params, value } =
+      await this.requireFulfillmentMatchesOrder(transaction, {
+        order,
+        orderHash,
+        protocolAddress,
+        accountAddress,
+        recipientAddress,
+        tokenId,
+        assetContractAddress,
+        unitsToFill: BigInt(unitsToFillStr),
+        includeOptionalCreatorFees,
+      })
 
     // ERC20-priced listings send no native value; Seaport pulls the payment from
     // the buyer instead, which reverts with a bare "execution reverted" when the
@@ -255,7 +245,7 @@ export class FulfillmentManager {
     }
     const tx = await wallet.signer.sendTransaction({
       to: transaction.to,
-      value: BigInt(transaction.value),
+      value,
       data,
       overrides: overrides as Record<string, unknown>,
     })
@@ -266,6 +256,122 @@ export class FulfillmentManager {
       "Fulfilling order",
     )
     return tx.hash
+  }
+
+  /**
+   * Validate the API's fulfillment transaction against the order the caller
+   * asked to fill, and return the Seaport call to encode and the value to send.
+   *
+   * Throws unless the transaction targets the order's Seaport contract, calls a
+   * fulfill function, fills an order whose recomputed hash is `orderHash`, pays
+   * no more native currency than that order's consideration, and delivers to
+   * the caller (or their chosen recipient).
+   */
+  private async requireFulfillmentMatchesOrder(
+    transaction: FulfillmentDataResponse["fulfillmentData"]["transaction"],
+    {
+      order,
+      orderHash,
+      protocolAddress,
+      accountAddress,
+      recipientAddress,
+      tokenId,
+      assetContractAddress,
+      unitsToFill,
+      includeOptionalCreatorFees,
+    }: {
+      order: OrderV2 | Order | Listing | Offer
+      orderHash: string
+      protocolAddress: string
+      accountAddress: string
+      recipientAddress?: string
+      tokenId?: string
+      assetContractAddress?: string
+      unitsToFill: bigint
+      includeOptionalCreatorFees: boolean
+    },
+  ): Promise<{ functionName: string; params: unknown[]; value: bigint }> {
+    requireFulfillmentTarget(transaction.to, protocolAddress)
+    const parsed = parseFulfillmentCall(
+      transaction.function,
+      transaction.inputData,
+    )
+    const { orderParameters } = parsed
+
+    if (isSameAddress(orderParameters.offerer, accountAddress)) {
+      rejectFulfillmentData(
+        `the order's offerer is the fulfilling account ${accountAddress}`,
+      )
+    }
+
+    if (
+      parsed.recipient !== undefined &&
+      !isZeroAddress(parsed.recipient) &&
+      !isSameAddress(parsed.recipient, recipientAddress ?? accountAddress)
+    ) {
+      rejectFulfillmentData(
+        `recipient ${parsed.recipient} is not ${recipientAddress ?? accountAddress}`,
+      )
+    }
+
+    requireCriteriaResolversMatch(
+      orderParameters,
+      parsed.criteriaResolvers,
+      tokenId,
+      assetContractAddress,
+    )
+    requireFillWithinUnits(
+      orderParameters,
+      parsed.numerator,
+      parsed.denominator,
+      unitsToFill,
+    )
+
+    const tipCount =
+      orderParameters.consideration.length -
+      orderParameters.totalOriginalConsiderationItems
+    if (tipCount < 0) {
+      rejectFulfillmentData("totalOriginalConsiderationItems is out of range")
+    }
+    if (tipCount > 0 && !includeOptionalCreatorFees) {
+      rejectFulfillmentData(
+        "consideration items were appended to the signed order",
+      )
+    }
+    requireTipsWithinCap(orderParameters)
+
+    const seaport = getSeaportInstance(protocolAddress, this.context.seaport)
+    const counter =
+      order.protocolData?.parameters?.counter ??
+      (await seaport.getCounter(orderParameters.offerer))
+    const computedHash = seaport.getOrderHash(
+      toOrderComponents(orderParameters, counter.toString()),
+    )
+    if (computedHash.toLowerCase() !== orderHash.toLowerCase()) {
+      rejectFulfillmentData(
+        `order hash ${computedHash} does not match the requested order ${orderHash}`,
+      )
+    }
+
+    let value: bigint
+    try {
+      value = BigInt(transaction.value as string | number | bigint)
+    } catch {
+      rejectFulfillmentData("transaction.value is not an integer")
+    }
+    const maxValue = maxNativePayment(
+      orderParameters,
+      includeOptionalCreatorFees,
+      parsed.numerator,
+      parsed.denominator,
+    )
+    if (value < 0n || value > maxValue) {
+      rejectFulfillmentData(
+        `transaction.value ${value} exceeds the order's native price ${maxValue}`,
+      )
+    }
+
+    return { functionName: parsed.functionName, params: parsed.params, value }
   }
 
   /**
