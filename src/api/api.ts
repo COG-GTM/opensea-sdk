@@ -1723,7 +1723,13 @@ export class OpenSeaAPI {
       )
     }
     const url = `${this.apiBaseUrl}${apiPath}`
-    if (new URL(url).origin !== new URL(this.apiBaseUrl).origin) {
+    // A placeholder base lets a relative apiBaseUrl (e.g. a same-origin
+    // "/proxy") resolve too; absolute URLs ignore it.
+    const placeholder = "https://relative-base.invalid"
+    if (
+      new URL(url, placeholder).origin !==
+      new URL(this.apiBaseUrl, placeholder).origin
+    ) {
       throw new Error(
         `Invalid API path: ${JSON.stringify(apiPath)} does not resolve to ${this.apiBaseUrl}`,
       )

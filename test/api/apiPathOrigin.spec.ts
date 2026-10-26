@@ -81,4 +81,18 @@ describe("generic request methods keep requests on the configured origin", () =>
       "http://localhost:8080/proxy/api/v2/offers",
     )
   })
+
+  test("a relative apiBaseUrl (same-origin proxy) keeps working", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ok())
+    const api = new OpenSeaAPI({ apiBaseUrl: "/proxy", fetch: fetchMock })
+    await api.get("/api/v2/collections")
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/proxy/api/v2/collections")
+  })
+
+  test("a relative apiBaseUrl still rejects paths that leave the origin", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ok())
+    const api = new OpenSeaAPI({ apiBaseUrl: "/", fetch: fetchMock })
+    await expect(api.get("/evil.example/x")).rejects.toThrow(/Invalid API path/)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
