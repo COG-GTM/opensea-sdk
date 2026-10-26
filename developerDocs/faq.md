@@ -21,6 +21,16 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
+For example, Katana (chain ID `747474`) is `Chain.Katana`, slug `katana`. Listings default to native ETH and offers default to WETH (vbETH) at `0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62`, using the canonical Seaport 1.6, OpenSea conduit, signed zone and fee recipient:
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://rpc.katana.network");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Katana, apiKey: "YOUR_API_KEY" });
+```
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
