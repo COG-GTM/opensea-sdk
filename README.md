@@ -285,6 +285,34 @@ On Katana, listings default to native ETH and offers spend WETH
 (`0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62`, Katana's Vault Bridge ETH) rather
 than the OP Stack `0x4200…0006` predeploy.
 
+### Using another chain (Celo)
+
+Pass any `Chain` value to target that network. For example, Celo (`Chain.Celo`,
+API slug `celo`, chain id `42220`) with ethers:
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://forno.celo.org");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Celo, apiKey: "YOUR_API_KEY" });
+```
+
+Or with viem, import the `celo` chain from `viem/chains`:
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import { celo } from 'viem/chains'
+import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
+
+const publicClient = createPublicClient({ chain: celo, transport: http() })
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Celo, apiKey: 'YOUR_API_KEY' })
+```
+
+On Celo, listings default to native CELO and offers spend the CELO ERC-20
+(`0x471ece3750da237f93b8e339c536989b8978a438`) directly. CELO has no separate
+wrapped token, so `wrapEth`/`unwrapWeth` throw on this chain.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
