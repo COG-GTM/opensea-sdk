@@ -6,7 +6,6 @@ import {
   ALTERNATE_SEAPORT_V1_6_ADDRESS,
   ALTERNATE_SIGNED_ZONE_V2_ADDRESS,
   GUNZILLA_FEE_RECIPIENT,
-  MANTLE_CONDUIT_ADDRESS,
   OPENSEA_CONDUIT_ADDRESS,
   OPENSEA_CONDUIT_ADDRESS_2,
   OPENSEA_CONDUIT_KEY,
@@ -265,11 +264,6 @@ export const getDefaultConduit = (
       return {
         key: OPENSEA_CONDUIT_KEY_2,
         address: OPENSEA_CONDUIT_ADDRESS_2,
-      }
-    case Chain.Mantle:
-      return {
-        key: OPENSEA_CONDUIT_KEY,
-        address: MANTLE_CONDUIT_ADDRESS,
       }
     default:
       if (usesAlternateProtocol(chain)) {
