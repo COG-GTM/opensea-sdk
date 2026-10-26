@@ -38,6 +38,8 @@ describe("Utils: chain", () => {
     // Payment-token helpers throw by design for chains without Seaport support.
     const SEAPORT_UNSUPPORTED_CHAINS = [Chain.Solana, Chain.Hyperliquid]
     const NO_WRAP_TOKEN_CHAINS = [Chain.StableChain, Chain.Arc]
+    // Native token is itself an ERC-20, so there is no wrapper contract.
+    const NATIVE_ERC20_CHAINS = [Chain.Celo]
     // Non-EVM chains with no numeric chain id
     const NO_CHAIN_ID_CHAINS = [Chain.Solana, Chain.Hyperliquid]
     const EVM_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/
@@ -53,6 +55,10 @@ describe("Utils: chain", () => {
           expect(getListingPaymentToken(chain)).toMatch(EVM_ADDRESS_RE)
           if (NO_WRAP_TOKEN_CHAINS.includes(chain)) {
             expect(usesNativeStablecoinOffers(chain)).toBe(true)
+            expect(() => getNativeWrapTokenAddress(chain)).toThrow()
+          } else if (NATIVE_ERC20_CHAINS.includes(chain)) {
+            expect(usesNativeStablecoinOffers(chain)).toBe(false)
+            expect(getOfferPaymentTokenDecimals(chain)).toBe(18)
             expect(() => getNativeWrapTokenAddress(chain)).toThrow()
           } else {
             expect(usesNativeStablecoinOffers(chain)).toBe(false)
@@ -99,6 +105,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Celo, "42220"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -256,6 +263,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns the CELO ERC-20 for Celo", () => {
+      expect(getOfferPaymentToken(Chain.Celo)).toBe(
+        "0x471ece3750da237f93b8e339c536989b8978a438",
+      )
+    })
+
     test("throws for Solana", () => {
       expect(() => getOfferPaymentToken(Chain.Solana)).toThrow(
         "Chain solana is not supported for OpenSea Seaport offers",
@@ -368,6 +381,10 @@ describe("Utils: chain", () => {
       expect(getListingPaymentToken(Chain.Arc)).toBe(ZERO_ADDRESS)
     })
 
+    test("returns native CELO (0x0) for Celo", () => {
+      expect(getListingPaymentToken(Chain.Celo)).toBe(ZERO_ADDRESS)
+    })
+
     test("returns WAVAX for Avalanche", () => {
       expect(getListingPaymentToken(Chain.Avalanche)).toBe(
         "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
@@ -464,6 +481,12 @@ describe("Utils: chain", () => {
       const result = getDefaultConduit(Chain.Arc)
       expect(result.key).toBe(OPENSEA_CONDUIT_KEY_2)
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS_2)
+    })
+
+    test("returns the canonical OpenSea conduit for Celo", () => {
+      const result = getDefaultConduit(Chain.Celo)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
     })
 
     test("returns alternate conduit for Gunzilla", () => {
@@ -686,6 +709,12 @@ describe("Utils: chain", () => {
     test("throws for Arc", () => {
       expect(() => getNativeWrapTokenAddress(Chain.Arc)).toThrow(
         "0x3600000000000000000000000000000000000000",
+      )
+    })
+
+    test("throws for Celo, whose native token is already an ERC-20", () => {
+      expect(() => getNativeWrapTokenAddress(Chain.Celo)).toThrow(
+        "0x471ece3750da237f93b8e339c536989b8978a438",
       )
     })
   })

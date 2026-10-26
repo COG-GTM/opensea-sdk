@@ -28,6 +28,12 @@ import { CHAIN_ID_MAP } from "./chainIds.generated"
 export const usesAlternateProtocol = (chain: Chain): boolean =>
   chain === Chain.Gunzilla || chain === Chain.Somnia || chain === Chain.MegaETH
 
+/**
+ * CELO is both the native gas token and an ERC-20 (the GoldToken contract), so
+ * offers spend it directly and there is no deposit/withdraw wrapper.
+ */
+const CELO_NATIVE_TOKEN_ADDRESS = "0x471ece3750da237f93b8e339c536989b8978a438"
+
 /** Decimals of native assets and of every wrapped native token the SDK defaults to. */
 const NATIVE_DECIMALS = 18
 
@@ -151,6 +157,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x3bd359c1119da7da1d913d1c4d2b7c461115433a" // WMON
     case Chain.Robinhood:
       return "0x0bd7d308f8e1639fab988df18a8011f41eacad73" // WETH
+    case Chain.Celo:
+      return CELO_NATIVE_TOKEN_ADDRESS // CELO
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -235,6 +243,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return ZERO_ADDRESS
     case Chain.StableChain:
       return ZERO_ADDRESS
+    case Chain.Celo:
+      return ZERO_ADDRESS // CELO
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown listing currency for ${exhaustiveChain}`)
@@ -330,6 +340,10 @@ export const getNativeWrapTokenAddress = (chain: Chain): string => {
   switch (chain) {
     case Chain.Polygon:
       return WPOL_ADDRESS
+    case Chain.Celo:
+      throw new Error(
+        `Chain ${chain} has no wrapped native token; CELO is itself an ERC-20 at ${CELO_NATIVE_TOKEN_ADDRESS}`,
+      )
     default:
       return getOfferPaymentToken(chain)
   }

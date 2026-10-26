@@ -212,6 +212,7 @@ export enum Chain {
   Robinhood = "robinhood",
   StableChain = "stablechain",
   Arc = "arc",
+  Celo = "celo",
 }
 
 // Compile-time check: every ChainIdentifier from the API spec must be assignable to Chain.
