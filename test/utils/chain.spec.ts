@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Katana, "747474"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -244,6 +245,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns WETH (vbETH) for Katana", () => {
+      expect(getOfferPaymentToken(Chain.Katana)).toBe(
+        "0xee7d8bcfb72bc1880d0cf19822eb0a2e6577ab62",
+      )
+    })
+
     test("returns USDT0 for Stable Chain", () => {
       expect(getOfferPaymentToken(Chain.StableChain)).toBe(
         "0x779ded0c9e1022225f8e0630b35a9b54be713736",
@@ -339,6 +346,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.MegaETH,
         Chain.Ink,
+        Chain.Katana,
       ]
 
       for (const chain of ethChains) {
@@ -432,6 +440,12 @@ describe("Utils: chain", () => {
   describe("getDefaultConduit", () => {
     test("returns default OpenSea conduit for Mainnet", () => {
       const result = getDefaultConduit(Chain.Mainnet)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
+    test("returns default OpenSea conduit for Katana", () => {
+      const result = getDefaultConduit(Chain.Katana)
       expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
     })
@@ -668,6 +682,7 @@ describe("Utils: chain", () => {
         Chain.Gunzilla,
         Chain.Somnia,
         Chain.MegaETH,
+        Chain.Katana,
       ]
 
       for (const chain of nonPolygonChains) {
