@@ -776,6 +776,37 @@ describe("SDK: FulfillmentManager", () => {
       )
     })
 
+    test("optional fees above the cap of a declining auction's end price", async () => {
+      // 10% of the 99000000 start price, but 20% of the 49500000 end price.
+      const fee = (BigInt(PRICE) / 10n).toString()
+      const endPrice = (BigInt(PRICE) / 2n).toString()
+      const auction = advancedOrderTransaction({
+        value: (BigInt(PRICE) + BigInt(fee)).toString(),
+        parameters: nativeListingParameters({
+          consideration: [
+            {
+              ...nativeListingParameters().consideration[0],
+              endAmount: endPrice,
+            },
+            {
+              itemType: 0,
+              token: ZERO_ADDRESS,
+              identifierOrCriteria: "0",
+              startAmount: fee,
+              endAmount: fee,
+              recipient: ATTACKER,
+            },
+          ],
+        }),
+      })
+      await expectRejected(
+        auction,
+        /exceed 1000 bps of the order's price 49500000/,
+        { includeOptionalCreatorFees: true },
+        hashOf(auction),
+      )
+    })
+
     test.each(["to", "data", "value"])("overrides set %s", async (field) => {
       await expectRejected(
         advancedOrderTransaction(),
