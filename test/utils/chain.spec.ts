@@ -102,6 +102,7 @@ describe("Utils: chain", () => {
       [Chain.Plasma, "9745"],
       [Chain.Sonic, "146"],
       [Chain.Linea, "59144"],
+      [Chain.Mantle, "5000"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -253,6 +254,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns WMNT for Mantle", () => {
+      expect(getOfferPaymentToken(Chain.Mantle)).toBe(
+        "0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8",
+      )
+    })
+
     test("returns USDT0 for Stable Chain", () => {
       expect(getOfferPaymentToken(Chain.StableChain)).toBe(
         "0x779ded0c9e1022225f8e0630b35a9b54be713736",
@@ -390,6 +397,10 @@ describe("Utils: chain", () => {
       }
     })
 
+    test("returns MNT (0x0) for Mantle", () => {
+      expect(getListingPaymentToken(Chain.Mantle)).toBe(ZERO_ADDRESS)
+    })
+
     test("returns ANIME (0x0) for AnimeChain", () => {
       expect(getListingPaymentToken(Chain.AnimeChain)).toBe(
         "0x0000000000000000000000000000000000000000",
@@ -484,6 +495,26 @@ describe("Utils: chain", () => {
       const result = getDefaultConduit(Chain.Mainnet)
       expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
+    test("returns the canonical OpenSea conduit for Mantle", () => {
+      const result = getDefaultConduit(Chain.Mantle)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
+    test("every chain resolves to a canonical conduit key/address pair", () => {
+      const canonical = new Map([
+        [OPENSEA_CONDUIT_KEY, OPENSEA_CONDUIT_ADDRESS],
+        [OPENSEA_CONDUIT_KEY_2, OPENSEA_CONDUIT_ADDRESS_2],
+        [ALTERNATE_CONDUIT_KEY, ALTERNATE_CONDUIT_ADDRESS],
+      ])
+
+      for (const chain of Object.values(Chain) as Chain[]) {
+        const { key, address } = getDefaultConduit(chain)
+        expect(canonical.has(key), `${chain} conduit key`).toBe(true)
+        expect(address, `${chain} conduit address`).toBe(canonical.get(key))
+      }
     })
 
     test("returns conduit 2 for Abstract", () => {
@@ -737,6 +768,7 @@ describe("Utils: chain", () => {
         Chain.Somnia,
         Chain.MegaETH,
         Chain.Linea,
+        Chain.Mantle,
       ]
 
       for (const chain of nonPolygonChains) {
@@ -761,6 +793,12 @@ describe("Utils: chain", () => {
     test("returns WETH for Linea", () => {
       expect(getNativeWrapTokenAddress(Chain.Linea)).toBe(
         "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f",
+      )
+    })
+
+    test("returns WMNT for Mantle", () => {
+      expect(getNativeWrapTokenAddress(Chain.Mantle)).toBe(
+        "0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8",
       )
     })
 

@@ -157,6 +157,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38" // wS
     case Chain.Linea:
       return "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f" // WETH
+    case Chain.Mantle:
+      return "0x78c1b0c915c4faa5fffa6cabf0219da63d7f4cb8" // WMNT
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -246,6 +248,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return ZERO_ADDRESS // XPL
     case Chain.Sonic:
       return ZERO_ADDRESS // S
+    case Chain.Mantle:
+      return ZERO_ADDRESS // MNT
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown listing currency for ${exhaustiveChain}`)
