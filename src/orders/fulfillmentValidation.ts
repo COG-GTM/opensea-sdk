@@ -30,6 +30,14 @@ const ITEM_TYPE_NATIVE = 0
 const ITEM_TYPE_ERC20 = 1
 const ITEM_TYPE_ERC721 = 2
 const ITEM_TYPE_ERC1155 = 3
+const ITEM_TYPE_ERC721_WITH_CRITERIA = 4
+const ITEM_TYPE_ERC1155_WITH_CRITERIA = 5
+
+/**
+ * Most the fulfiller will pay in optional fees, as basis points of the order's
+ * own consideration in the same currency. OpenSea caps creator earnings at 10%.
+ */
+export const MAX_OPTIONAL_FEE_BPS = 1000n
 
 type Item = {
   itemType: number
@@ -113,6 +121,27 @@ function requireBytes32(value: unknown, field: string): string {
 
 function sameAddress(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase()
+}
+
+/** Sum of each item's larger amount, the most it can cost during the auction. */
+function sumMaxAmounts(items: Item[]): bigint {
+  let total = 0n
+  for (const item of items) {
+    const { startAmount, endAmount } = item
+    total += startAmount > endAmount ? startAmount : endAmount
+  }
+  return total
+}
+
+function isNativeItem(item: Item): boolean {
+  return item.itemType === ITEM_TYPE_NATIVE
+}
+
+function isCriteriaItem(item: Item): boolean {
+  return (
+    item.itemType === ITEM_TYPE_ERC721_WITH_CRITERIA ||
+    item.itemType === ITEM_TYPE_ERC1155_WITH_CRITERIA
+  )
 }
 
 function parseItem(value: unknown, field: string): Item {
@@ -438,17 +467,34 @@ export function requireCallMatchesOrder(
     )
   }
 
-  if (!sameAddress(call.recipient, ZERO_ADDRESS)) {
-    const allowed = [accountAddress, recipientAddress].filter(
-      (address): address is string => !!address,
-    )
-    if (!allowed.some((address) => sameAddress(address, call.recipient))) {
+  // A zero recipient means the caller, which basic and plain fulfillOrder calls
+  // always deliver to. Once a distinct recipient is requested, only an advanced
+  // order naming that recipient delivers where the caller asked.
+  if (recipientAddress && !sameAddress(recipientAddress, accountAddress)) {
+    if (!sameAddress(call.recipient, recipientAddress)) {
       fail(
-        `recipient ${call.recipient} is not the fulfiller or the requested recipient`,
+        `the call delivers to ${call.recipient}, not the requested recipient ${recipientAddress}`,
       )
     }
+  } else if (
+    !sameAddress(call.recipient, ZERO_ADDRESS) &&
+    !sameAddress(call.recipient, accountAddress)
+  ) {
+    fail(`recipient ${call.recipient} is not the fulfilling account`)
   }
 
+  // Every criteria item must be resolved, and only to the requested token;
+  // otherwise the API could pick any token the caller has approved.
+  const allItems = [...order.offer, ...order.consideration]
+  const criteriaItems = allItems.filter(isCriteriaItem).length
+  if (criteriaItems > 0 && tokenId === undefined) {
+    fail("the returned order has criteria items but no tokenId was requested")
+  }
+  if (call.criteriaResolvers.length !== criteriaItems) {
+    fail(
+      `the call has ${call.criteriaResolvers.length} criteria resolver(s) for ${criteriaItems} criteria item(s)`,
+    )
+  }
   if (tokenId !== undefined) {
     const wanted = requireUint(tokenId, "tokenId")
     call.criteriaResolvers.forEach((raw, i) => {
@@ -488,16 +534,25 @@ export function requireCallMatchesOrder(
         )
       }
     }
+    // The hash does not cover tips, so cap them against the signed price.
+    for (const currency of paymentItems) {
+      const inCurrency = (item: ConsiderationItem) =>
+        item.itemType === currency.itemType &&
+        sameAddress(item.token, currency.token)
+      const price = sumMaxAmounts(order.consideration.filter(inCurrency))
+      const fees = sumMaxAmounts(order.tips.filter(inCurrency))
+      const cap = (price * MAX_OPTIONAL_FEE_BPS) / 10000n
+      if (fees > cap) {
+        fail(
+          `optional fees of ${fees} ${currency.token} exceed ${MAX_OPTIONAL_FEE_BPS} bps of the order's price ${price}`,
+        )
+      }
+    }
   }
 
   const sendValue = requireUint(value, "transaction.value")
-  let nativeTotal = 0n
-  for (const item of [...order.consideration, ...order.tips]) {
-    if (item.itemType === ITEM_TYPE_NATIVE) {
-      nativeTotal +=
-        item.startAmount > item.endAmount ? item.startAmount : item.endAmount
-    }
-  }
+  const allPayments = [...order.consideration, ...order.tips]
+  const nativeTotal = sumMaxAmounts(allPayments.filter(isNativeItem))
   if (sendValue > nativeTotal) {
     fail(
       `transaction.value ${sendValue} exceeds the order's native price ${nativeTotal}`,

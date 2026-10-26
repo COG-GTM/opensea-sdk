@@ -157,6 +157,41 @@ function fulfillOrderTransaction() {
   }
 }
 
+/** Collection offer of 99000000 WETH-like tokens for any NFT in the collection. */
+function criteriaOfferTransaction(identifiers: string[] = ["123"]) {
+  return advancedOrderTransaction({
+    value: "0",
+    parameters: nativeListingParameters({
+      offer: [
+        {
+          itemType: 1,
+          token: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+          identifierOrCriteria: "0",
+          startAmount: PRICE,
+          endAmount: PRICE,
+        },
+      ],
+      consideration: [
+        {
+          itemType: 4,
+          token: NFT,
+          identifierOrCriteria: "0",
+          startAmount: "1",
+          endAmount: "1",
+          recipient: SELLER,
+        },
+      ],
+    }),
+    criteriaResolvers: identifiers.map((identifier) => ({
+      orderIndex: 0,
+      side: 1,
+      index: 0,
+      identifier,
+      criteriaProof: [],
+    })),
+  })
+}
+
 /** Seaport order hash of the order a fulfillment transaction fills, at counter 0. */
 function hashOf(transaction: { function: string; inputData: unknown }) {
   return computeOrderHash(
@@ -291,21 +326,9 @@ describe("SDK: FulfillmentManager", () => {
     })
 
     test("fulfills criteria order with contract and tokenId", async () => {
-      respondWith(
-        advancedOrderTransaction({
-          criteriaResolvers: [
-            {
-              orderIndex: 0,
-              side: 0,
-              index: 0,
-              identifier: "123",
-              criteriaProof: [],
-            },
-          ],
-        }),
-      )
+      respondWith(criteriaOfferTransaction(["123"]))
       await fulfillmentManager.fulfillOrder({
-        order: orderFor(mockOrderV2),
+        order: orderFor(mockOfferOrderV2),
         accountAddress: BUYER,
         assetContractAddress: "0xNFT",
         tokenId: "123",
@@ -649,26 +672,117 @@ describe("SDK: FulfillmentManager", () => {
     test("a recipient other than the buyer or the requested recipient", async () => {
       await expectRejected(
         advancedOrderTransaction({ recipient: ATTACKER }),
-        /recipient .* is not the fulfiller or the requested recipient/,
+        /recipient .* is not the fulfilling account/,
       )
     })
 
     test("a criteria resolver for a token other than the requested one", async () => {
+      const otherToken = criteriaOfferTransaction(["456"])
       await expectRejected(
-        advancedOrderTransaction({
-          criteriaResolvers: [
-            {
-              orderIndex: 0,
-              side: 0,
-              index: 0,
-              identifier: "456",
-              criteriaProof: [],
-            },
-          ],
-        }),
+        otherToken,
         /resolves token 456, not the requested token 123/,
         { tokenId: "123" },
+        hashOf(otherToken),
       )
+    })
+
+    test("a criteria order with no resolver for the requested token", async () => {
+      // An unresolved criteria item would let the API pick any approved token.
+      const unresolved = criteriaOfferTransaction([])
+      await expectRejected(
+        unresolved,
+        /0 criteria resolver\(s\) for 1 criteria item\(s\)/,
+        { tokenId: "123" },
+        hashOf(unresolved),
+      )
+    })
+
+    test("a criteria order when no tokenId was requested", async () => {
+      const criteria = criteriaOfferTransaction(["123"])
+      await expectRejected(
+        criteria,
+        /criteria items but no tokenId was requested/,
+        {},
+        hashOf(criteria),
+      )
+    })
+
+    test("a call that ignores the requested recipient", async () => {
+      // A zero recipient delivers to the buyer, not to the requested address.
+      await expectRejected(
+        advancedOrderTransaction({ recipient: ZERO_ADDRESS }),
+        /not the requested recipient/,
+        { recipientAddress: "0x000000000000000000000000000000000000beef" },
+      )
+    })
+
+    test("a basic order when a distinct recipient was requested", async () => {
+      await expectRejected(
+        basicOrderTransaction(),
+        /not the requested recipient/,
+        { recipientAddress: "0x000000000000000000000000000000000000beef" },
+        hashOf(basicOrderTransaction()),
+      )
+    })
+
+    test("optional fees above the cap in the order's ERC20", async () => {
+      const usdc = "0x1234567890123456789012345678901234567890"
+      const payment = (amount: string, recipient: string) => ({
+        itemType: 1,
+        token: usdc,
+        identifierOrCriteria: "0",
+        startAmount: amount,
+        endAmount: amount,
+        recipient,
+      })
+      const drained = advancedOrderTransaction({
+        value: "0",
+        parameters: nativeListingParameters({
+          consideration: [
+            payment(PRICE, SELLER),
+            payment("1000000000000", ATTACKER),
+          ],
+        }),
+      })
+      await expectRejected(
+        drained,
+        /optional fees of 1000000000000 .* exceed 1000 bps/,
+        { includeOptionalCreatorFees: true },
+        hashOf(drained),
+      )
+    })
+
+    test("optional native fees above the cap", async () => {
+      const fee = (BigInt(PRICE) / 10n + 1n).toString()
+      await expectRejected(
+        advancedOrderTransaction({
+          value: (BigInt(PRICE) + BigInt(fee)).toString(),
+          parameters: nativeListingParameters({
+            consideration: [
+              ...nativeListingParameters().consideration,
+              {
+                itemType: 0,
+                token: ZERO_ADDRESS,
+                identifierOrCriteria: "0",
+                startAmount: fee,
+                endAmount: fee,
+                recipient: ATTACKER,
+              },
+            ],
+          }),
+        }),
+        /exceed 1000 bps of the order's price 99000000/,
+        { includeOptionalCreatorFees: true },
+      )
+    })
+
+    test.each(["to", "data", "value"])("overrides set %s", async (field) => {
+      await expectRejected(
+        advancedOrderTransaction(),
+        new RegExp(`overrides cannot set ${field}`),
+        { overrides: { [field]: field === "value" ? 1n : ATTACKER } },
+      )
+      expect(mockAPI.generateFulfillmentData).not.toHaveBeenCalled()
     })
 
     test("consideration items added on top of the order", async () => {
