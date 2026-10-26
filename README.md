@@ -159,6 +159,29 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Other chains (example: Plasma)
+
+Pass any `Chain` value to target another network. For example, Plasma
+(`Chain.Plasma`, API slug `plasma`, chain id `9745`):
+
+```typescript
+import { defineChain, createPublicClient, http } from 'viem'
+import { OpenSeaSDK, Chain } from '@opensea/sdk/viem'
+
+const plasma = defineChain({
+  id: 9745,
+  name: 'Plasma',
+  nativeCurrency: { name: 'XPL', symbol: 'XPL', decimals: 18 },
+  rpcUrls: { default: { http: ['YOUR_PLASMA_RPC_URL'] } },
+})
+
+const publicClient = createPublicClient({ chain: plasma, transport: http() })
+const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Plasma, apiKey: 'YOUR_API_KEY' })
+```
+
+On Plasma, listings default to native XPL and offers to wrapped XPL (WXPL).
+The WXPL address in this fork is a demo placeholder.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
