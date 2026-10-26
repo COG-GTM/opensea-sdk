@@ -1606,14 +1606,13 @@ export class OpenSeaAPI {
     query: object = {},
     options?: RequestOptions,
   ): Promise<Camelize<T> | T> {
+    const baseUrl = this.resolveApiUrl(apiPath)
     return executeWithRateLimit(
       async () => {
         // Snakeize query keys so consumers can pass camelCase args even
         // though the API expects snake_case URL params.
         const qs = this.objectToSearchParams(snakeizeKeysDeep(query))
-        const url = qs
-          ? `${this.apiBaseUrl}${apiPath}?${qs}`
-          : `${this.apiBaseUrl}${apiPath}`
+        const url = qs ? `${baseUrl}?${qs}` : baseUrl
         const raw = await this._fetch(url, "GET", undefined, undefined, options)
         return this.camelizeResponseBody<T>(raw, options)
       },
@@ -1690,9 +1689,9 @@ export class OpenSeaAPI {
     headers?: object,
     options?: PostOptions,
   ): Promise<Camelize<T> | T> {
+    const url = this.resolveApiUrl(apiPath)
     return executeWithRateLimit(
       async () => {
-        const url = `${this.apiBaseUrl}${apiPath}`
         // Snakeize the body so consumers can pass camelCase even though the
         // API expects snake_case JSON. Opt-out via `snakeizeBody: false` for
         // Seaport-shaped bodies whose inner keys must remain camelCase on the
@@ -1705,6 +1704,37 @@ export class OpenSeaAPI {
       },
       { logger: this.logger, signal: options?.signal },
     )
+  }
+
+  /**
+   * Join `apiPath` onto the configured base URL, rejecting any path that could
+   * move the request (and its API key / bearer token) to another origin, e.g.
+   * `@evil.example/x` or `.evil.example/x`.
+   */
+  private resolveApiUrl(apiPath: string): string {
+    if (
+      typeof apiPath !== "string" ||
+      !apiPath.startsWith("/") ||
+      apiPath.startsWith("//") ||
+      apiPath.startsWith("/\\")
+    ) {
+      throw new Error(
+        `Invalid API path: must be a path starting with a single "/", got ${JSON.stringify(apiPath)}`,
+      )
+    }
+    const url = `${this.apiBaseUrl}${apiPath}`
+    // A placeholder base lets a relative apiBaseUrl (e.g. a same-origin
+    // "/proxy") resolve too; absolute URLs ignore it.
+    const placeholder = "https://relative-base.invalid"
+    if (
+      new URL(url, placeholder).origin !==
+      new URL(this.apiBaseUrl, placeholder).origin
+    ) {
+      throw new Error(
+        `Invalid API path: ${JSON.stringify(apiPath)} does not resolve to ${this.apiBaseUrl}`,
+      )
+    }
+    return url
   }
 
   /**
