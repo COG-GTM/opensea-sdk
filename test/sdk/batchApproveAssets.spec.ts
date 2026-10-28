@@ -131,6 +131,39 @@ describe("AssetsManager: batchApproveAssets", () => {
     })
   })
 
+  test("clears a leftover nonzero allowance before raising it", async () => {
+    // e.g. 60 left after a partial spend; USDT-style tokens reject 60 -> 100.
+    const h = harness(Chain.Gnosis, 60n)
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "100")],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData.mock.calls.map(c => c[0].args)).toEqual([
+      [OPENSEA_CONDUIT_ADDRESS, 0n],
+      [OPENSEA_CONDUIT_ADDRESS, 100n],
+    ])
+    expect(h.writeContract).toHaveBeenCalledTimes(1)
+    const [{ args }] = h.writeContract.mock.calls[0]
+    expect(args[0].map((c: { target: string }) => c.target)).toEqual([
+      TOKEN,
+      TOKEN,
+    ])
+  })
+
+  test("does not reset when there is no existing allowance", async () => {
+    const h = harness(Chain.Gnosis, 0n)
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "100")],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledTimes(1)
+    expect(h.sendTransaction).toHaveBeenCalledTimes(1)
+  })
+
   test("skips the approval when the allowance already covers the sum", async () => {
     const h = harness(Chain.Gnosis, 4n)
 

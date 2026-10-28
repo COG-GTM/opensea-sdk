@@ -433,14 +433,26 @@ export class AssetsManager {
         // Checked once per contract against the summed amount.
         processedContracts.add(contractAddress)
         const totalAmount = erc20Totals.get(contractAddress) as bigint
-        const isApproved = await this.checkAssetApproval(
-          asset,
+        const allowance = await this.getERC20Allowance(
+          asset.tokenAddress,
           fromAddress,
           defaultConduit.address,
-          totalAmount,
         )
-        if (isApproved) {
+        if (allowance >= totalAmount) {
           continue
+        }
+
+        // Some tokens (e.g. USDT) revert when changing one nonzero allowance
+        // to another, so clear a leftover allowance first.
+        if (allowance > 0n) {
+          approvalsNeeded.push({
+            target: asset.tokenAddress,
+            callData: cc.encodeFunctionData({
+              abi: APPROVE_ABI,
+              functionName: "approve",
+              args: [defaultConduit.address, 0n],
+            }),
+          })
         }
 
         // approve(spender, amount) - bounded to the requested total
@@ -514,6 +526,29 @@ export class AssetsManager {
         accountAddress: fromAddress,
       })
       throw error
+    }
+  }
+
+  /**
+   * Read an ERC20 allowance, treating a failed read as zero.
+   */
+  private async getERC20Allowance(
+    tokenAddress: string,
+    owner: string,
+    spender: string,
+  ): Promise<bigint> {
+    try {
+      return (await this.context.contractCaller.readContract({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [owner, spender],
+      })) as bigint
+    } catch (error) {
+      this.context.logger(
+        `Error checking approval for ${tokenAddress}: ${error}`,
+      )
+      return 0n
     }
   }
 
