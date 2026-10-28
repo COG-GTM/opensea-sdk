@@ -151,6 +151,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x3bd359c1119da7da1d913d1c4d2b7c461115433a" // WMON
     case Chain.Robinhood:
       return "0x0bd7d308f8e1639fab988df18a8011f41eacad73" // WETH
+    case Chain.Gnosis:
+      return "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d" // WXDAI
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -235,6 +237,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return ZERO_ADDRESS
     case Chain.StableChain:
       return ZERO_ADDRESS
+    case Chain.Gnosis:
+      return ZERO_ADDRESS // xDAI
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown listing currency for ${exhaustiveChain}`)
@@ -260,6 +264,12 @@ export const getDefaultConduit = (
       return {
         key: OPENSEA_CONDUIT_KEY_2,
         address: OPENSEA_CONDUIT_ADDRESS_2,
+      }
+    case Chain.Gnosis:
+      // OpenSea conduit
+      return {
+        key: OPENSEA_CONDUIT_KEY,
+        address: "0x1e0049783f008a0085193e00003d00cd54003c77",
       }
     default:
       if (usesAlternateProtocol(chain)) {
