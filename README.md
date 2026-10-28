@@ -159,6 +159,22 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Choosing a chain
+
+Pass any `Chain` enum value as `chain`. For example, Gnosis (chain id 100)
+lists in native xDAI and makes offers in WXDAI:
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://rpc.gnosischain.com");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Gnosis, apiKey: "YOUR_API_KEY" });
+
+// DEMO PLACEHOLDER collection slug
+const { nfts } = await sdk.api.nfts.getNFTsByCollection("demo-placeholder-gnosis-collection");
+```
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
