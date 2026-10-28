@@ -7,11 +7,7 @@ import {
   SET_APPROVAL_FOR_ALL_ABI,
   TRANSFER_HELPER_ABI,
 } from "../abi/abis"
-import {
-  MAX_UINT256,
-  MULTICALL3_ADDRESS,
-  TRANSFER_HELPER_ADDRESS,
-} from "../constants"
+import { MULTICALL3_ADDRESS, TRANSFER_HELPER_ADDRESS } from "../constants"
 import {
   type Amount,
   type AssetWithTokenStandard,
@@ -382,60 +378,81 @@ export class AssetsManager {
     const defaultConduit = getDefaultConduit(this.context.chain)
     const cc = this.context.contractCaller
 
+    // Sum ERC20 amounts per token contract so each contract gets a single
+    // approval bounded to the total the caller requested.
+    const erc20Totals = new Map<string, bigint>()
+    for (const { asset, amount } of assets) {
+      if (asset.tokenStandard !== TokenStandard.ERC20) {
+        continue
+      }
+      const contractAddress = asset.tokenAddress.toLowerCase()
+      erc20Totals.set(
+        contractAddress,
+        (erc20Totals.get(contractAddress) ?? 0n) +
+          BigInt((amount as Amount).toString()),
+      )
+    }
+
     // Check which assets need approval and build approval calldata
     const approvalsNeeded: Array<{ target: string; callData: string }> = []
     const processedContracts = new Set<string>()
 
     for (const { asset, amount } of assets) {
-      const isApproved = await this.checkAssetApproval(
-        asset,
-        fromAddress,
-        defaultConduit.address,
-        amount,
-      )
+      const contractAddress = asset.tokenAddress.toLowerCase()
+      if (processedContracts.has(contractAddress)) {
+        continue
+      }
 
-      if (!isApproved) {
-        // For ERC721/ERC1155, only approve once per contract
-        if (
-          asset.tokenStandard === TokenStandard.ERC721 ||
-          asset.tokenStandard === TokenStandard.ERC1155
-        ) {
-          if (processedContracts.has(asset.tokenAddress.toLowerCase())) {
-            continue
-          }
-          processedContracts.add(asset.tokenAddress.toLowerCase())
-
-          // setApprovalForAll(operator, true)
-          const callData = cc.encodeFunctionData({
-            abi: SET_APPROVAL_FOR_ALL_ABI,
-            functionName: "setApprovalForAll",
-            args: [defaultConduit.address, true],
-          })
-          approvalsNeeded.push({
-            target: asset.tokenAddress,
-            callData,
-          })
-        } else if (asset.tokenStandard === TokenStandard.ERC20) {
-          // One approval per contract, same as the ERC721/ERC1155 branch above.
-          // The amount is always max uint256, so a second entry for the same
-          // token would send an identical, wasted approval.
-          const contractAddress = asset.tokenAddress.toLowerCase()
-          if (processedContracts.has(contractAddress)) {
-            continue
-          }
-          processedContracts.add(contractAddress)
-
-          // approve(spender, amount) - use max uint256 for unlimited
-          const callData = cc.encodeFunctionData({
-            abi: APPROVE_ABI,
-            functionName: "approve",
-            args: [defaultConduit.address, MAX_UINT256],
-          })
-          approvalsNeeded.push({
-            target: asset.tokenAddress,
-            callData,
-          })
+      if (
+        asset.tokenStandard === TokenStandard.ERC721 ||
+        asset.tokenStandard === TokenStandard.ERC1155
+      ) {
+        const isApproved = await this.checkAssetApproval(
+          asset,
+          fromAddress,
+          defaultConduit.address,
+          amount,
+        )
+        if (isApproved) {
+          continue
         }
+        // For ERC721/ERC1155, only approve once per contract
+        processedContracts.add(contractAddress)
+
+        // setApprovalForAll(operator, true)
+        const callData = cc.encodeFunctionData({
+          abi: SET_APPROVAL_FOR_ALL_ABI,
+          functionName: "setApprovalForAll",
+          args: [defaultConduit.address, true],
+        })
+        approvalsNeeded.push({
+          target: asset.tokenAddress,
+          callData,
+        })
+      } else if (asset.tokenStandard === TokenStandard.ERC20) {
+        // Checked once per contract against the summed amount.
+        processedContracts.add(contractAddress)
+        const totalAmount = erc20Totals.get(contractAddress) as bigint
+        const isApproved = await this.checkAssetApproval(
+          asset,
+          fromAddress,
+          defaultConduit.address,
+          totalAmount,
+        )
+        if (isApproved) {
+          continue
+        }
+
+        // approve(spender, amount) - bounded to the requested total
+        const callData = cc.encodeFunctionData({
+          abi: APPROVE_ABI,
+          functionName: "approve",
+          args: [defaultConduit.address, totalAmount],
+        })
+        approvalsNeeded.push({
+          target: asset.tokenAddress,
+          callData,
+        })
       }
     }
 
