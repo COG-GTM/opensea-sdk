@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.WorldChain, "480"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -164,6 +165,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.Ink,
         Chain.Soneium,
+        Chain.WorldChain,
       ]
       const expectedAddress = "0x4200000000000000000000000000000000000006"
 
@@ -339,6 +341,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.MegaETH,
         Chain.Ink,
+        Chain.WorldChain,
       ]
 
       for (const chain of ethChains) {
@@ -687,6 +690,41 @@ describe("Utils: chain", () => {
       expect(() => getNativeWrapTokenAddress(Chain.Arc)).toThrow(
         "0x3600000000000000000000000000000000000000",
       )
+    })
+  })
+
+  describe("World Chain", () => {
+    test("uses chain ID 480", () => {
+      expect(getChainId(Chain.WorldChain)).toBe("480")
+    })
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.WorldChain)).toBe(ZERO_ADDRESS)
+      expect(getDefaultPaymentTokenDecimals(Chain.WorldChain)).toEqual({
+        [ZERO_ADDRESS]: 18,
+        "0x4200000000000000000000000000000000000006": 18,
+      })
+    })
+
+    test("offers and wraps with the OP-stack WETH predeploy", () => {
+      const weth = "0x4200000000000000000000000000000000000006"
+      expect(getOfferPaymentToken(Chain.WorldChain)).toBe(weth)
+      expect(getOfferPaymentTokenDecimals(Chain.WorldChain)).toBe(18)
+      expect(getNativeWrapTokenAddress(Chain.WorldChain)).toBe(weth)
+      expect(usesNativeStablecoinOffers(Chain.WorldChain)).toBe(false)
+    })
+
+    test("uses the standard OpenSea Seaport, conduit, zone and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.WorldChain)).toBe(false)
+      expect(getDefaultConduit(Chain.WorldChain)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(getSeaportAddress(Chain.WorldChain)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.WorldChain)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.WorldChain)).toBe(OPENSEA_FEE_RECIPIENT)
     })
   })
 })
