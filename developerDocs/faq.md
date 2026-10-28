@@ -21,6 +21,8 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
+For example, Mode is `Chain.Mode` (chain id `34443`): listings are priced in native ETH and offers in WETH (`0x4200000000000000000000000000000000000006`). OpenSea's Seaport 1.6, conduit and signed zone are not deployed on Mode yet, so its orders cannot settle on-chain until they are.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
