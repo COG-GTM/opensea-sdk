@@ -159,6 +159,24 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Using BOB
+
+BOB (`Chain.Bob`, chain id `60808`) prices listings in native ETH and uses
+WETH (`0x4200000000000000000000000000000000000006`) for offers. Seaport 1.6,
+the OpenSea conduit and the signed zone are not yet deployed on BOB, so orders
+cannot settle there until OpenSea deploys them.
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://rpc.gobob.xyz");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Bob, apiKey: "YOUR_API_KEY" });
+
+// DEMO PLACEHOLDER collection slug
+const { collection } = await sdk.api.getCollection("demo-placeholder-bob-collection");
+```
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
