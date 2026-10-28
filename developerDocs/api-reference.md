@@ -476,6 +476,16 @@ const { collections } = await openseaSDK.api.collections.getTopPfpCollections({
 
 **Parameters:** `GetTopPfpCollectionsArgs`: `limit` (1-50, required) and an optional `chain`. Omit `chain` to rank across every chain.
 
+Any `Chain` value works as the filter, for example World Chain:
+
+```typescript
+const { collections: worldChainTop } =
+  await openseaSDK.api.collections.getTopPfpCollections({
+    limit: 10,
+    chain: Chain.WorldChain,
+  });
+```
+
 **Returns:** `TopPfpCollectionsResponse` with `collections`.
 
 ---
