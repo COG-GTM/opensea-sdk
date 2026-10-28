@@ -1,4 +1,6 @@
 import { describe, expect, test, vi } from "vitest"
+import { APPROVE_ABI, SET_APPROVAL_FOR_ALL_ABI } from "../../src/abi/abis"
+import { MAX_UINT256, OPENSEA_CONDUIT_ADDRESS } from "../../src/constants"
 import { AssetsManager } from "../../src/sdk/assets"
 import type { SDKContext } from "../../src/sdk/context"
 import { Chain, EventType, TokenStandard } from "../../src/types"
@@ -10,17 +12,17 @@ const FROM = "0x0000000000000000000000000000000000000001"
  * batchApproveAssets only touches a handful of context members, so build the
  * minimum and cast. Allowance reads return 0 so every asset looks unapproved.
  */
-function harness() {
+function harness(chain: Chain = Chain.Mainnet, allowance = 0n) {
   const sendTransaction = vi.fn().mockResolvedValue({ hash: "0xtest" })
   const writeContract = vi.fn().mockResolvedValue({ hash: "0xmulticall" })
   const encodeFunctionData = vi.fn().mockReturnValue("0xapproval")
   const confirmTransaction = vi.fn().mockResolvedValue(undefined)
 
   const context = {
-    chain: Chain.Mainnet,
+    chain,
     wallet: { signer: { sendTransaction } },
     contractCaller: {
-      readContract: vi.fn().mockResolvedValue(0n),
+      readContract: vi.fn().mockResolvedValue(allowance),
       writeContract,
       encodeFunctionData,
     },
@@ -36,6 +38,11 @@ function harness() {
     writeContract,
     encodeFunctionData,
     confirmTransaction,
+    readContract: (
+      context.contractCaller as unknown as {
+        readContract: ReturnType<typeof vi.fn>
+      }
+    ).readContract,
   }
 }
 
@@ -53,8 +60,14 @@ describe("AssetsManager: batchApproveAssets", () => {
       fromAddress: FROM,
     })
 
-    // One approval, so it goes direct rather than through Multicall3.
+    // One approval for the summed amount, so it goes direct rather than
+    // through Multicall3.
     expect(h.encodeFunctionData).toHaveBeenCalledTimes(1)
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: APPROVE_ABI,
+      functionName: "approve",
+      args: [OPENSEA_CONDUIT_ADDRESS, 3n],
+    })
     expect(h.sendTransaction).toHaveBeenCalledTimes(1)
     expect(h.writeContract).not.toHaveBeenCalled()
     expect(h.confirmTransaction).toHaveBeenCalledWith(
@@ -74,8 +87,82 @@ describe("AssetsManager: batchApproveAssets", () => {
     })
 
     expect(h.encodeFunctionData).toHaveBeenCalledTimes(2)
+    expect(h.encodeFunctionData.mock.calls.map(c => c[0].args)).toEqual([
+      [OPENSEA_CONDUIT_ADDRESS, 1n],
+      [OPENSEA_CONDUIT_ADDRESS, 2n],
+    ])
     // Two approvals batch through Multicall3 instead of going direct.
     expect(h.writeContract).toHaveBeenCalledTimes(1)
     expect(h.sendTransaction).not.toHaveBeenCalled()
+  })
+
+  test("approves the canonical conduit for the requested amount on Gnosis", async () => {
+    const h = harness(Chain.Gnosis)
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "1000000000000000000")],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: APPROVE_ABI,
+      functionName: "approve",
+      args: [OPENSEA_CONDUIT_ADDRESS, 1000000000000000000n],
+    })
+    const [args] = h.encodeFunctionData.mock.calls[0]
+    expect(args.args[0]).toBe("0x1e0049783f008a0085193e00003d00cd54003c71")
+    expect(args.args[1]).not.toBe(MAX_UINT256)
+  })
+
+  test("checks the existing allowance against the summed amount", async () => {
+    // Allowance covers each entry alone but not their sum.
+    const h = harness(Chain.Gnosis, 2n)
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "2"), erc20(TOKEN, "2")],
+      fromAddress: FROM,
+    })
+
+    expect(h.readContract).toHaveBeenCalledTimes(1)
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: APPROVE_ABI,
+      functionName: "approve",
+      args: [OPENSEA_CONDUIT_ADDRESS, 4n],
+    })
+  })
+
+  test("skips the approval when the allowance already covers the sum", async () => {
+    const h = harness(Chain.Gnosis, 4n)
+
+    const result = await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "2"), erc20(TOKEN, "2")],
+      fromAddress: FROM,
+    })
+
+    expect(result).toBeUndefined()
+    expect(h.encodeFunctionData).not.toHaveBeenCalled()
+  })
+
+  test("keeps setApprovalForAll for NFTs", async () => {
+    const h = harness(Chain.Gnosis, false as unknown as bigint)
+
+    await h.manager.batchApproveAssets({
+      assets: [
+        {
+          asset: {
+            tokenAddress: "0x2222222222222222222222222222222222222222",
+            tokenId: "1",
+            tokenStandard: TokenStandard.ERC721,
+          },
+        },
+      ],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: SET_APPROVAL_FOR_ALL_ABI,
+      functionName: "setApprovalForAll",
+      args: [OPENSEA_CONDUIT_ADDRESS, true],
+    })
   })
 })

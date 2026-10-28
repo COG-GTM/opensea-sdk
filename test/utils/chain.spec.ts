@@ -495,8 +495,11 @@ describe("Utils: chain", () => {
       expect(result.address).toBe(ALTERNATE_CONDUIT_ADDRESS)
     })
 
-    test("returns the OpenSea conduit key for Gnosis", () => {
-      expect(getDefaultConduit(Chain.Gnosis).key).toBe(OPENSEA_CONDUIT_KEY)
+    test("returns the OpenSea conduit for Gnosis", () => {
+      const conduit = getDefaultConduit(Chain.Gnosis)
+      expect(conduit.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(conduit.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+      expect(conduit.address).toBe("0x1e0049783f008a0085193e00003d00cd54003c71")
     })
 
     test("returns default OpenSea conduit for other chains", () => {

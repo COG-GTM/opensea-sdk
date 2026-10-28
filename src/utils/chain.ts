@@ -265,12 +265,6 @@ export const getDefaultConduit = (
         key: OPENSEA_CONDUIT_KEY_2,
         address: OPENSEA_CONDUIT_ADDRESS_2,
       }
-    case Chain.Gnosis:
-      // OpenSea conduit
-      return {
-        key: OPENSEA_CONDUIT_KEY,
-        address: "0x1e0049783f008a0085193e00003d00cd54003c77",
-      }
     default:
       if (usesAlternateProtocol(chain)) {
         return {
