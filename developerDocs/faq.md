@@ -21,6 +21,8 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
+For example, `Chain.Kaia` (`"kaia"`, chain id `8217`) lists in native KAIA and makes offers in WKLAY (`0x19aac5f612f524b754ca7e7c41cbfa2e981a4432`), using the standard OpenSea Seaport 1.6 and conduit.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?

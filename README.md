@@ -256,6 +256,26 @@ console.log(activity.windows["24h"]?.volumeUsd)
 The SDK exposes camel-cased fields. A requested window is absent when the token
 has no swaps in that period.
 
+### Kaia
+
+`Chain.Kaia` (`"kaia"`, chain id `8217`) uses the standard OpenSea Seaport 1.6,
+conduit, signed zone and fee recipient. Listings default to native KAIA and
+offers use WKLAY, Kaia's canonical wrapped native token
+(`0x19aac5f612f524b754ca7e7c41cbfa2e981a4432`, 18 decimals).
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain, getOfferPaymentToken } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://public-en.node.kaia.io");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Kaia, apiKey: "YOUR_API_KEY" });
+
+getOfferPaymentToken(Chain.Kaia); // WKLAY
+
+// DEMO PLACEHOLDER: fictional collection slug
+const collection = await sdk.api.collections.getCollection("demo-kaia-collection");
+```
+
 ### Real-time events
 
 Subscribe to marketplace events over WebSocket from the `@opensea/sdk/stream`
