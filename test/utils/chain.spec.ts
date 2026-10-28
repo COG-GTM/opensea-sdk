@@ -32,6 +32,7 @@ import {
   usesAlternateProtocol,
   usesNativeStablecoinOffers,
 } from "../../src/utils/chain"
+import { CHAIN_ID_MAP } from "../../src/utils/chainIds.generated"
 
 describe("Utils: chain", () => {
   describe("chain helper exhaustiveness", () => {
@@ -107,6 +108,11 @@ describe("Utils: chain", () => {
         expect(getChainId(chain)).toBe(expectedId)
       })
     }
+
+    test("CHAIN_ID_MAP stays sorted by numeric chain id", () => {
+      const ids = Object.values(CHAIN_ID_MAP).map(Number)
+      expect(ids).toEqual([...ids].sort((a, b) => a - b))
+    })
 
     test("throws for unknown chain", () => {
       expect(() => getChainId("UNKNOWN_CHAIN" as Chain)).toThrow(
