@@ -37,6 +37,8 @@ For example, World Chain (chain ID 480) is `Chain.WorldChain` (`"world_chain"`).
 
 For example, `Chain.Kaia` (`"kaia"`, chain id `8217`) lists in native KAIA and makes offers in WKLAY (`0x19aac5f612f524b754ca7e7c41cbfa2e981a4432`), using the standard OpenSea Seaport 1.6 and conduit.
 
+For example, BOB is `Chain.Bob` (`"bob"`, chain id `60808`): listings are priced in native ETH and offers use WETH at `0x4200000000000000000000000000000000000006`.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
