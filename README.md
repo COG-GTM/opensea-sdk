@@ -159,6 +159,24 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Using another chain (Lisk example)
+
+Pass any `Chain` value as `chain`. For example, Lisk (chain id 1135) lists in native ETH and makes offers in WETH (`0x4200000000000000000000000000000000000006`):
+
+```typescript
+import { ethers } from "ethers"
+import { Chain, OpenSeaSDK } from "@opensea/sdk"
+
+// The provider must point at the same network as `chain`
+const liskProvider = new ethers.JsonRpcProvider("https://rpc.api.lisk.com")
+const sdk = new OpenSeaSDK(liskProvider, { chain: Chain.Lisk, apiKey: "YOUR_API_KEY" })
+
+// DEMO PLACEHOLDER collection slug
+const { listings } = await sdk.api.listings.getAllListings("demo-placeholder-lisk-collection")
+```
+
+Seaport 1.6, the OpenSea conduit and the signed zone are not yet deployed on Lisk, so orders there cannot settle on-chain until OpenSea deploys them.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
