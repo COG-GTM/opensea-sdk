@@ -128,6 +128,7 @@ export const getOfferPaymentToken = (chain: Chain) => {
     case Chain.Soneium:
     case Chain.Mode:
     case Chain.Lisk:
+    case Chain.WorldChain:
       return "0x4200000000000000000000000000000000000006" // WETH
     case Chain.AnimeChain:
       return "0x164906a76f1a2ea933366c446ae0ec6a37062c42" // WANIME
@@ -224,6 +225,7 @@ export const getListingPaymentToken = (chain: Chain) => {
     case Chain.Taiko:
     case Chain.Mode:
     case Chain.Lisk:
+    case Chain.WorldChain:
       return "0x0000000000000000000000000000000000000000" // ETH
     case Chain.Polygon:
       return "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619" // WETH

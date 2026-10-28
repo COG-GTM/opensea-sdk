@@ -33,6 +33,8 @@ For example, `Chain.Moonbeam` (`"moonbeam"`, chain ID 1284) uses native GLMR for
 
 Each EVM chain maps to its numeric chain id through `getChainId()` (for example `Chain.Lisk` is `1135`, `Chain.Base` is `8453`); it throws for non-EVM chains such as `Chain.Solana`.
 
+For example, World Chain (chain ID 480) is `Chain.WorldChain` (`"world_chain"`). It lists in native ETH and makes offers in WETH (`0x4200000000000000000000000000000000000006`); `getChainId(Chain.WorldChain)` returns `"480"`.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
