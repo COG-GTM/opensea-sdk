@@ -159,6 +159,44 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Other EVM chains
+
+Pass any EVM `Chain` value as `chain`, with a provider pointed at the same
+network (non-EVM chains such as `Chain.Solana` are not supported by the
+`OpenSeaSDK` constructor). These chains use the standard OpenSea Seaport 1.6,
+conduit, signed zone and fee recipient addresses. "Settles on-chain" reflects
+`eth_getCode` on those canonical addresses: where they have no code yet, the SDK
+can build orders but they cannot settle until OpenSea deploys the contracts.
+
+| Chain | `Chain` value (API slug) | Chain id | Listing token | Offer / wrap token | Settles on-chain |
+| --- | --- | --- | --- | --- | --- |
+| Scroll | `Chain.Scroll` (`scroll`) | 534352 | ETH (native) | [WETH](https://docs.scroll.io/en/developers/scroll-contracts/) `0x5300000000000000000000000000000000000004` | No (Seaport 1.6 only; conduit and signed zone not deployed) |
+| Taiko | `Chain.Taiko` (`taiko`) | 167000 | ETH (native) | [WETH](https://docs.taiko.xyz/network/contract-addresses) `0xA51894664A773981C6C112C43ce576f315d5b1B6` | No (Seaport 1.6 only; conduit and signed zone not deployed) |
+| Mode | `Chain.Mode` (`mode`) | 34443 | ETH (native) | [WETH](https://specs.optimism.io/protocol/predeploys.html#weth9) `0x4200000000000000000000000000000000000006` | No |
+| Gnosis | `Chain.Gnosis` (`gnosis`) | 100 | xDAI (native) | [WXDAI](https://docs.gnosischain.com/about/tokens/xdai) `0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d` | No |
+| Moonbeam | `Chain.Moonbeam` (`moonbeam`) | 1284 | GLMR (native) | [WGLMR](https://moonscan.io/token/0xacc15dc74880c9944775448304b263d191c6077f) `0xAcc15dC74880C9944775448304B263D191c6077F` | No |
+| Lisk | `Chain.Lisk` (`lisk`) | 1135 | ETH (native) | [WETH](https://docs.lisk.com/about-lisk/contracts) `0x4200000000000000000000000000000000000006` | No |
+| World Chain | `Chain.WorldChain` (`world_chain`) | 480 | ETH (native) | [WETH](https://docs.world.org/world-chain/developers/world-chain-contracts) `0x4200000000000000000000000000000000000006` | No |
+| Kaia | `Chain.Kaia` (`kaia`) | 8217 | KAIA (native) | [WKLAY](https://docs.kaia.io/build/smart-contracts/token-development/canonical-wkaia/) `0x19aac5f612f524b754ca7e7c41cbfa2e981a4432` | Yes |
+| BOB | `Chain.Bob` (`bob`) | 60808 | ETH (native) | [WETH](https://docs.gobob.xyz/reference/contracts) `0x4200000000000000000000000000000000000006` | No |
+| Cronos | `Chain.Cronos` (`cronos`) | 25 | CRO (native) | [WCRO](https://docs.cronos.org/for-dapp-developers/chain-integration/token-contract-addresses) `0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23` | No |
+
+All offer tokens have 18 decimals. For example, on Gnosis:
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain, getOfferPaymentToken } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://rpc.gnosischain.com");
+// DEMO PLACEHOLDER: use your own API key
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Gnosis, apiKey: "YOUR_API_KEY" });
+
+getOfferPaymentToken(Chain.Gnosis); // WXDAI
+
+// DEMO PLACEHOLDER collection slug, not a real collection
+const { listings } = await sdk.api.listings.getAllListings("demo-placeholder-collection");
+```
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped

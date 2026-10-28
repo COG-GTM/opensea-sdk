@@ -1,4 +1,6 @@
 import { describe, expect, test, vi } from "vitest"
+import { APPROVE_ABI, SET_APPROVAL_FOR_ALL_ABI } from "../../src/abi/abis"
+import { MAX_UINT256, OPENSEA_CONDUIT_ADDRESS } from "../../src/constants"
 import { AssetsManager } from "../../src/sdk/assets"
 import type { SDKContext } from "../../src/sdk/context"
 import { Chain, EventType, TokenStandard } from "../../src/types"
@@ -10,17 +12,17 @@ const FROM = "0x0000000000000000000000000000000000000001"
  * batchApproveAssets only touches a handful of context members, so build the
  * minimum and cast. Allowance reads return 0 so every asset looks unapproved.
  */
-function harness() {
+function harness(chain: Chain = Chain.Mainnet, allowance = 0n) {
   const sendTransaction = vi.fn().mockResolvedValue({ hash: "0xtest" })
   const writeContract = vi.fn().mockResolvedValue({ hash: "0xmulticall" })
   const encodeFunctionData = vi.fn().mockReturnValue("0xapproval")
   const confirmTransaction = vi.fn().mockResolvedValue(undefined)
 
   const context = {
-    chain: Chain.Mainnet,
+    chain,
     wallet: { signer: { sendTransaction } },
     contractCaller: {
-      readContract: vi.fn().mockResolvedValue(0n),
+      readContract: vi.fn().mockResolvedValue(allowance),
       writeContract,
       encodeFunctionData,
     },
@@ -32,10 +34,17 @@ function harness() {
 
   return {
     manager: new AssetsManager(context),
+    dispatch: (context as unknown as { dispatch: ReturnType<typeof vi.fn> })
+      .dispatch,
     sendTransaction,
     writeContract,
     encodeFunctionData,
     confirmTransaction,
+    readContract: (
+      context.contractCaller as unknown as {
+        readContract: ReturnType<typeof vi.fn>
+      }
+    ).readContract,
   }
 }
 
@@ -53,8 +62,14 @@ describe("AssetsManager: batchApproveAssets", () => {
       fromAddress: FROM,
     })
 
-    // One approval, so it goes direct rather than through Multicall3.
+    // One approval for the summed amount, so it goes direct rather than
+    // through Multicall3.
     expect(h.encodeFunctionData).toHaveBeenCalledTimes(1)
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: APPROVE_ABI,
+      functionName: "approve",
+      args: [OPENSEA_CONDUIT_ADDRESS, 3n],
+    })
     expect(h.sendTransaction).toHaveBeenCalledTimes(1)
     expect(h.writeContract).not.toHaveBeenCalled()
     expect(h.confirmTransaction).toHaveBeenCalledWith(
@@ -74,8 +89,226 @@ describe("AssetsManager: batchApproveAssets", () => {
     })
 
     expect(h.encodeFunctionData).toHaveBeenCalledTimes(2)
+    expect(h.encodeFunctionData.mock.calls.map(c => c[0].args)).toEqual([
+      [OPENSEA_CONDUIT_ADDRESS, 1n],
+      [OPENSEA_CONDUIT_ADDRESS, 2n],
+    ])
     // Two approvals batch through Multicall3 instead of going direct.
     expect(h.writeContract).toHaveBeenCalledTimes(1)
     expect(h.sendTransaction).not.toHaveBeenCalled()
+  })
+
+  test("approves the canonical conduit for the requested amount on Gnosis", async () => {
+    const h = harness(Chain.Gnosis)
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "1000000000000000000")],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: APPROVE_ABI,
+      functionName: "approve",
+      args: [OPENSEA_CONDUIT_ADDRESS, 1000000000000000000n],
+    })
+    const [args] = h.encodeFunctionData.mock.calls[0]
+    expect(args.args[0]).toBe("0x1e0049783f008a0085193e00003d00cd54003c71")
+    expect(args.args[1]).not.toBe(MAX_UINT256)
+  })
+
+  test("checks the existing allowance against the summed amount", async () => {
+    // Allowance covers each entry alone but not their sum.
+    const h = harness(Chain.Gnosis, 2n)
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "2"), erc20(TOKEN, "2")],
+      fromAddress: FROM,
+    })
+
+    expect(h.readContract).toHaveBeenCalledTimes(1)
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: APPROVE_ABI,
+      functionName: "approve",
+      args: [OPENSEA_CONDUIT_ADDRESS, 4n],
+    })
+  })
+
+  test("clears a leftover nonzero allowance before raising it", async () => {
+    // e.g. 60 left after a partial spend; USDT-style tokens reject 60 -> 100.
+    const h = harness(Chain.Gnosis, 60n)
+    h.encodeFunctionData.mockImplementation(({ args }) => `approve:${args[1]}`)
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "100")],
+      fromAddress: FROM,
+    })
+
+    expect(h.sendTransaction.mock.calls.map(c => c[0].data)).toEqual([
+      "approve:0",
+      "approve:100",
+    ])
+    // Both come from the owner's signer, never through Multicall3, and the
+    // reset is confirmed before the new approval is sent.
+    expect(h.writeContract).not.toHaveBeenCalled()
+    expect(h.sendTransaction.mock.calls.map(c => c[0].to)).toEqual([
+      TOKEN,
+      TOKEN,
+    ])
+    expect(h.sendTransaction.mock.calls.map(c => c[0].from)).toEqual([
+      FROM,
+      FROM,
+    ])
+    expect(h.confirmTransaction).toHaveBeenCalledTimes(2)
+    expect(h.confirmTransaction.mock.invocationCallOrder[0]).toBeLessThan(
+      h.sendTransaction.mock.invocationCallOrder[1],
+    )
+  })
+
+  test("sends every approval from the owner once one needs a reset", async () => {
+    const otherA = "0x1111111111111111111111111111111111111111" // DEMO PLACEHOLDER
+    const otherB = "0x3333333333333333333333333333333333333333" // DEMO PLACEHOLDER
+    const h = harness(Chain.Gnosis)
+    h.encodeFunctionData.mockImplementation(({ args }) => `approve:${args[1]}`)
+    h.readContract.mockImplementation(async ({ address }) =>
+      address === TOKEN ? 60n : 0n,
+    )
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "100"), erc20(otherA, "5"), erc20(otherB, "7")],
+      fromAddress: FROM,
+    })
+
+    // No Multicall3 batch that could revert after TOKEN's allowance changed.
+    expect(h.writeContract).not.toHaveBeenCalled()
+    expect(h.sendTransaction.mock.calls.map(c => c[0].to)).toEqual([
+      TOKEN,
+      TOKEN,
+      otherA,
+      otherB,
+    ])
+    expect(h.sendTransaction.mock.calls.map(c => c[0].data)).toEqual([
+      "approve:0",
+      "approve:100",
+      "approve:5",
+      "approve:7",
+    ])
+    expect(h.sendTransaction.mock.calls.map(c => c[0].from)).toEqual([
+      FROM,
+      FROM,
+      FROM,
+      FROM,
+    ])
+  })
+
+  test("dispatches TransactionDenied when the owner rejects a direct approval", async () => {
+    const otherA = "0x1111111111111111111111111111111111111111" // DEMO PLACEHOLDER
+    const otherB = "0x3333333333333333333333333333333333333333" // DEMO PLACEHOLDER
+    const h = harness(Chain.Gnosis)
+    h.readContract.mockImplementation(async ({ address }) =>
+      address === TOKEN ? 60n : 0n,
+    )
+    const rejection = new Error("user rejected")
+    h.sendTransaction
+      .mockResolvedValueOnce({ hash: "0xreset" })
+      .mockResolvedValueOnce({ hash: "0xapprove" })
+      .mockRejectedValueOnce(rejection)
+    vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await expect(
+      h.manager.batchApproveAssets({
+        assets: [erc20(TOKEN, "100"), erc20(otherA, "5"), erc20(otherB, "7")],
+        fromAddress: FROM,
+      }),
+    ).rejects.toThrow("user rejected")
+
+    expect(h.dispatch).toHaveBeenCalledWith(EventType.TransactionDenied, {
+      error: rejection,
+      accountAddress: FROM,
+    })
+    expect(h.sendTransaction).toHaveBeenCalledTimes(3)
+  })
+
+  test("assigns consecutive nonces when the caller sets one", async () => {
+    const otherA = "0x1111111111111111111111111111111111111111" // DEMO PLACEHOLDER
+    const otherB = "0x3333333333333333333333333333333333333333" // DEMO PLACEHOLDER
+    const h = harness(Chain.Gnosis)
+    h.readContract.mockImplementation(async ({ address }) =>
+      address === TOKEN ? 60n : 0n,
+    )
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "100"), erc20(otherA, "5"), erc20(otherB, "7")],
+      fromAddress: FROM,
+      overrides: { nonce: 12 },
+    })
+
+    expect(h.sendTransaction.mock.calls.map(c => c[0].overrides.nonce)).toEqual(
+      [12, 13, 14, 15],
+    )
+  })
+
+  test("does not reset when there is no existing allowance", async () => {
+    const h = harness(Chain.Gnosis, 0n)
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "100")],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledTimes(1)
+    expect(h.sendTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  test("skips the approval when the allowance already covers the sum", async () => {
+    const h = harness(Chain.Gnosis, 4n)
+
+    const result = await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "2"), erc20(TOKEN, "2")],
+      fromAddress: FROM,
+    })
+
+    expect(result).toBeUndefined()
+    expect(h.encodeFunctionData).not.toHaveBeenCalled()
+  })
+
+  test("keeps setApprovalForAll for NFTs", async () => {
+    const h = harness(Chain.Gnosis, false as unknown as bigint)
+
+    await h.manager.batchApproveAssets({
+      assets: [
+        {
+          asset: {
+            tokenAddress: "0x2222222222222222222222222222222222222222",
+            tokenId: "1",
+            tokenStandard: TokenStandard.ERC721,
+          },
+        },
+      ],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: SET_APPROVAL_FOR_ALL_ABI,
+      functionName: "setApprovalForAll",
+      args: [OPENSEA_CONDUIT_ADDRESS, true],
+    })
+  })
+
+  test("sums numeric amounts at or above 1e21 without exponent parsing", async () => {
+    const h = harness(Chain.Gnosis)
+
+    await h.manager.batchApproveAssets({
+      assets: [
+        { ...erc20(TOKEN, "0"), amount: 1e21 },
+        { ...erc20(TOKEN, "0"), amount: 2e21 },
+      ],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: APPROVE_ABI,
+      functionName: "approve",
+      args: [OPENSEA_CONDUIT_ADDRESS, 3_000_000_000_000_000_000_000n],
+    })
   })
 })

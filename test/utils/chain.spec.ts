@@ -32,6 +32,7 @@ import {
   usesAlternateProtocol,
   usesNativeStablecoinOffers,
 } from "../../src/utils/chain"
+import { CHAIN_ID_MAP } from "../../src/utils/chainIds.generated"
 
 describe("Utils: chain", () => {
   describe("chain helper exhaustiveness", () => {
@@ -98,7 +99,17 @@ describe("Utils: chain", () => {
       [Chain.AnimeChain, "69000"],
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
+      [Chain.Mode, "34443"],
       [Chain.Arc, "5042"],
+      [Chain.Scroll, "534352"],
+      [Chain.Taiko, "167000"],
+      [Chain.Gnosis, "100"],
+      [Chain.Moonbeam, "1284"],
+      [Chain.Lisk, "1135"],
+      [Chain.WorldChain, "480"],
+      [Chain.Kaia, "8217"],
+      [Chain.Bob, "60808"],
+      [Chain.Cronos, "25"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -106,6 +117,11 @@ describe("Utils: chain", () => {
         expect(getChainId(chain)).toBe(expectedId)
       })
     }
+
+    test("CHAIN_ID_MAP stays sorted by numeric chain id", () => {
+      const ids = Object.values(CHAIN_ID_MAP).map(Number)
+      expect(ids).toEqual([...ids].sort((a, b) => a - b))
+    })
 
     test("throws for unknown chain", () => {
       expect(() => getChainId("UNKNOWN_CHAIN" as Chain)).toThrow(
@@ -164,12 +180,21 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.Ink,
         Chain.Soneium,
+        Chain.Lisk,
+        Chain.WorldChain,
+        Chain.Bob,
       ]
       const expectedAddress = "0x4200000000000000000000000000000000000006"
 
       for (const chain of opChains) {
         expect(getOfferPaymentToken(chain)).toBe(expectedAddress)
       }
+    })
+
+    test("returns WETH for Taiko", () => {
+      expect(getOfferPaymentToken(Chain.Taiko)).toBe(
+        "0xA51894664A773981C6C112C43ce576f315d5b1B6",
+      )
     })
 
     test("returns WBERA for BeraChain", () => {
@@ -244,6 +269,18 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns WXDAI for Gnosis", () => {
+      expect(getOfferPaymentToken(Chain.Gnosis)).toBe(
+        "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
+      )
+    })
+
+    test("returns WCRO for Cronos", () => {
+      expect(getOfferPaymentToken(Chain.Cronos)).toBe(
+        "0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23",
+      )
+    })
+
     test("returns USDT0 for Stable Chain", () => {
       expect(getOfferPaymentToken(Chain.StableChain)).toBe(
         "0x779ded0c9e1022225f8e0630b35a9b54be713736",
@@ -253,6 +290,12 @@ describe("Utils: chain", () => {
     test("returns USDC for Arc", () => {
       expect(getOfferPaymentToken(Chain.Arc)).toBe(
         "0x3600000000000000000000000000000000000000",
+      )
+    })
+
+    test("returns WGLMR for Moonbeam", () => {
+      expect(getOfferPaymentToken(Chain.Moonbeam)).toBe(
+        "0xAcc15dC74880C9944775448304B263D191c6077F",
       )
     })
 
@@ -285,10 +328,19 @@ describe("Utils: chain", () => {
       expect(getOfferPaymentTokenDecimals(Chain.Mainnet)).toBe(18)
       expect(getOfferPaymentTokenDecimals(Chain.Polygon)).toBe(18)
       expect(getOfferPaymentTokenDecimals(Chain.Base)).toBe(18)
+      expect(getOfferPaymentTokenDecimals(Chain.Moonbeam)).toBe(18)
+      expect(getOfferPaymentTokenDecimals(Chain.Cronos)).toBe(18)
     })
   })
 
   describe("getDefaultPaymentTokenDecimals", () => {
+    test("seeds WCRO and CRO with 18 decimals on Cronos", () => {
+      expect(getDefaultPaymentTokenDecimals(Chain.Cronos)).toEqual({
+        "0x5c7f8a570d578ed84e63fdfa7b1ee72deae1ae23": 18,
+        [ZERO_ADDRESS]: 18,
+      })
+    })
+
     test("seeds the offer mirror with 6 decimals and native listings with 18 on Arc", () => {
       expect(getDefaultPaymentTokenDecimals(Chain.Arc)).toEqual({
         "0x3600000000000000000000000000000000000000": 6,
@@ -306,6 +358,13 @@ describe("Utils: chain", () => {
     test("seeds WETH and ETH with 18 decimals on Mainnet", () => {
       expect(getDefaultPaymentTokenDecimals(Chain.Mainnet)).toEqual({
         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": 18,
+        [ZERO_ADDRESS]: 18,
+      })
+    })
+
+    test("seeds WGLMR and GLMR with 18 decimals on Moonbeam", () => {
+      expect(getDefaultPaymentTokenDecimals(Chain.Moonbeam)).toEqual({
+        "0xacc15dc74880c9944775448304b263d191c6077f": 18,
         [ZERO_ADDRESS]: 18,
       })
     })
@@ -339,6 +398,10 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.MegaETH,
         Chain.Ink,
+        Chain.Taiko,
+        Chain.Lisk,
+        Chain.WorldChain,
+        Chain.Bob,
       ]
 
       for (const chain of ethChains) {
@@ -346,6 +409,10 @@ describe("Utils: chain", () => {
           "0x0000000000000000000000000000000000000000",
         )
       }
+    })
+
+    test("returns xDAI (0x0) for Gnosis", () => {
+      expect(getListingPaymentToken(Chain.Gnosis)).toBe(ZERO_ADDRESS)
     })
 
     test("returns ANIME (0x0) for AnimeChain", () => {
@@ -366,6 +433,10 @@ describe("Utils: chain", () => {
 
     test("returns native USDC for Arc", () => {
       expect(getListingPaymentToken(Chain.Arc)).toBe(ZERO_ADDRESS)
+    })
+
+    test("returns native GLMR for Moonbeam", () => {
+      expect(getListingPaymentToken(Chain.Moonbeam)).toBe(ZERO_ADDRESS)
     })
 
     test("returns WAVAX for Avalanche", () => {
@@ -402,6 +473,10 @@ describe("Utils: chain", () => {
       expect(getListingPaymentToken(Chain.Ronin)).toBe(
         "0xe514d9deb7966c8be0ca922de8a064264ea6bcd4",
       )
+    })
+
+    test("returns CRO (0x0) for Cronos", () => {
+      expect(getListingPaymentToken(Chain.Cronos)).toBe(ZERO_ADDRESS)
     })
 
     test("returns GUN (0x0) for Gunzilla", () => {
@@ -466,6 +541,12 @@ describe("Utils: chain", () => {
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS_2)
     })
 
+    test("returns default OpenSea conduit for Moonbeam", () => {
+      const result = getDefaultConduit(Chain.Moonbeam)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
     test("returns alternate conduit for Gunzilla", () => {
       const result = getDefaultConduit(Chain.Gunzilla)
       expect(result.key).toBe(ALTERNATE_CONDUIT_KEY)
@@ -484,6 +565,19 @@ describe("Utils: chain", () => {
       expect(result.address).toBe(ALTERNATE_CONDUIT_ADDRESS)
     })
 
+    test("returns the OpenSea conduit for Gnosis", () => {
+      const conduit = getDefaultConduit(Chain.Gnosis)
+      expect(conduit.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(conduit.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+      expect(conduit.address).toBe("0x1e0049783f008a0085193e00003d00cd54003c71")
+    })
+
+    test("returns default OpenSea conduit for Cronos", () => {
+      const result = getDefaultConduit(Chain.Cronos)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
     test("returns default OpenSea conduit for other chains", () => {
       const otherChains = [
         Chain.Polygon,
@@ -500,9 +594,45 @@ describe("Utils: chain", () => {
     })
   })
 
+  describe("Taiko wiring", () => {
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Taiko)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers and wraps with Taiko WETH", () => {
+      const weth = "0xA51894664A773981C6C112C43ce576f315d5b1B6"
+      expect(getOfferPaymentToken(Chain.Taiko)).toBe(weth)
+      expect(getNativeWrapTokenAddress(Chain.Taiko)).toBe(weth)
+      expect(getOfferPaymentTokenDecimals(Chain.Taiko)).toBe(18)
+      expect(getDefaultPaymentTokenDecimals(Chain.Taiko)).toEqual({
+        [weth.toLowerCase()]: 18,
+        [ZERO_ADDRESS]: 18,
+      })
+    })
+
+    test("uses the standard OpenSea conduit, Seaport, zone and fee recipient", () => {
+      expect(getDefaultConduit(Chain.Taiko)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(getSeaportAddress(Chain.Taiko)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Taiko)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Taiko)).toBe(OPENSEA_FEE_RECIPIENT)
+      expect(usesAlternateProtocol(Chain.Taiko)).toBe(false)
+    })
+  })
+
   describe("getSeaportAddress", () => {
     test("returns cross-chain Seaport 1.6 for Mainnet", () => {
       expect(getSeaportAddress(Chain.Mainnet)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+    })
+
+    test("returns cross-chain Seaport 1.6 for Moonbeam", () => {
+      expect(getSeaportAddress(Chain.Moonbeam)).toBe(
         CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
       )
     })
@@ -525,6 +655,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns cross-chain Seaport 1.6 for Cronos", () => {
+      expect(getSeaportAddress(Chain.Cronos)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+    })
+
     test("returns cross-chain Seaport 1.6 for other chains", () => {
       const otherChains = [
         Chain.Polygon,
@@ -540,9 +676,24 @@ describe("Utils: chain", () => {
     })
   })
 
+  describe("Gnosis protocol addresses", () => {
+    test("uses cross-chain Seaport 1.6, signed zone v2 and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Gnosis)).toBe(false)
+      expect(getSeaportAddress(Chain.Gnosis)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Gnosis)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Gnosis)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+  })
+
   describe("getSignedZone", () => {
     test("returns OpenSea signed zone for Mainnet", () => {
       expect(getSignedZone(Chain.Mainnet)).toBe(OPENSEA_SIGNED_ZONE_V2)
+    })
+
+    test("returns OpenSea signed zone for Moonbeam", () => {
+      expect(getSignedZone(Chain.Moonbeam)).toBe(OPENSEA_SIGNED_ZONE_V2)
     })
 
     test("returns alternate signed zone for Gunzilla", () => {
@@ -559,6 +710,10 @@ describe("Utils: chain", () => {
       expect(getSignedZone(Chain.MegaETH)).toBe(
         ALTERNATE_SIGNED_ZONE_V2_ADDRESS,
       )
+    })
+
+    test("returns OpenSea signed zone for Cronos", () => {
+      expect(getSignedZone(Chain.Cronos)).toBe(OPENSEA_SIGNED_ZONE_V2)
     })
 
     test("returns OpenSea signed zone for other chains", () => {
@@ -580,6 +735,10 @@ describe("Utils: chain", () => {
       expect(getFeeRecipient(Chain.Mainnet)).toBe(OPENSEA_FEE_RECIPIENT)
     })
 
+    test("returns OpenSea fee recipient for Moonbeam", () => {
+      expect(getFeeRecipient(Chain.Moonbeam)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+
     test("returns Gunzilla fee recipient for Gunzilla", () => {
       expect(getFeeRecipient(Chain.Gunzilla)).toBe(GUNZILLA_FEE_RECIPIENT)
     })
@@ -590,6 +749,10 @@ describe("Utils: chain", () => {
 
     test("returns alternate fee recipient for MegaETH", () => {
       expect(getFeeRecipient(Chain.MegaETH)).toBe(ALTERNATE_FEE_RECIPIENT)
+    })
+
+    test("returns OpenSea fee recipient for Cronos", () => {
+      expect(getFeeRecipient(Chain.Cronos)).toBe(OPENSEA_FEE_RECIPIENT)
     })
 
     test("returns OpenSea fee recipient for other chains", () => {
@@ -622,6 +785,14 @@ describe("Utils: chain", () => {
 
     test("returns false for Mainnet", () => {
       expect(usesAlternateProtocol(Chain.Mainnet)).toBe(false)
+    })
+
+    test("returns false for Moonbeam", () => {
+      expect(usesAlternateProtocol(Chain.Moonbeam)).toBe(false)
+    })
+
+    test("returns false for Cronos", () => {
+      expect(usesAlternateProtocol(Chain.Cronos)).toBe(false)
     })
 
     test("returns false for other standard chains", () => {
@@ -677,6 +848,24 @@ describe("Utils: chain", () => {
       }
     })
 
+    test("returns WXDAI for Gnosis (same as offer token)", () => {
+      expect(getNativeWrapTokenAddress(Chain.Gnosis)).toBe(
+        "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
+      )
+    })
+
+    test("returns WGLMR for Moonbeam (same as offer token)", () => {
+      expect(getNativeWrapTokenAddress(Chain.Moonbeam)).toBe(
+        "0xAcc15dC74880C9944775448304B263D191c6077F",
+      )
+    })
+
+    test("returns WCRO for Cronos (same as offer token)", () => {
+      expect(getNativeWrapTokenAddress(Chain.Cronos)).toBe(
+        "0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23",
+      )
+    })
+
     test("throws for Stable Chain", () => {
       expect(() => getNativeWrapTokenAddress(Chain.StableChain)).toThrow(
         "0x779ded0c9e1022225f8e0630b35a9b54be713736",
@@ -687,6 +876,214 @@ describe("Utils: chain", () => {
       expect(() => getNativeWrapTokenAddress(Chain.Arc)).toThrow(
         "0x3600000000000000000000000000000000000000",
       )
+    })
+  })
+
+  describe("Scroll", () => {
+    const SCROLL_WETH = "0x5300000000000000000000000000000000000004"
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Scroll)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers in WETH", () => {
+      expect(getOfferPaymentToken(Chain.Scroll)).toBe(SCROLL_WETH)
+      expect(getOfferPaymentTokenDecimals(Chain.Scroll)).toBe(18)
+    })
+
+    test("wraps native ETH through WETH", () => {
+      expect(getNativeWrapTokenAddress(Chain.Scroll)).toBe(SCROLL_WETH)
+    })
+
+    test("uses the standard OpenSea protocol addresses", () => {
+      expect(usesAlternateProtocol(Chain.Scroll)).toBe(false)
+      expect(getDefaultConduit(Chain.Scroll)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(getSeaportAddress(Chain.Scroll)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Scroll)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Scroll)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+  })
+
+  describe("Mode", () => {
+    test("returns chain id 34443", () => {
+      expect(getChainId(Chain.Mode)).toBe("34443")
+    })
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Mode)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers in the OP-stack WETH predeploy", () => {
+      expect(getOfferPaymentToken(Chain.Mode)).toBe(
+        "0x4200000000000000000000000000000000000006",
+      )
+      expect(getOfferPaymentTokenDecimals(Chain.Mode)).toBe(18)
+    })
+
+    test("wraps native ETH into the offer token", () => {
+      expect(getNativeWrapTokenAddress(Chain.Mode)).toBe(
+        "0x4200000000000000000000000000000000000006",
+      )
+    })
+
+    test("uses the standard OpenSea conduit", () => {
+      expect(getDefaultConduit(Chain.Mode)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+    })
+
+    test("uses the standard Seaport, signed zone and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Mode)).toBe(false)
+      expect(getSeaportAddress(Chain.Mode)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Mode)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Mode)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+  })
+
+  describe("Lisk", () => {
+    const LISK_WETH = "0x4200000000000000000000000000000000000006"
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Lisk)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers and wraps in the OP-stack WETH predeploy", () => {
+      expect(getOfferPaymentToken(Chain.Lisk)).toBe(LISK_WETH)
+      expect(getNativeWrapTokenAddress(Chain.Lisk)).toBe(LISK_WETH)
+      expect(getOfferPaymentTokenDecimals(Chain.Lisk)).toBe(18)
+    })
+
+    test("uses the standard OpenSea conduit, Seaport, zone and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Lisk)).toBe(false)
+      expect(getDefaultConduit(Chain.Lisk)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(getSeaportAddress(Chain.Lisk)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Lisk)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Lisk)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+
+    test("maps to chain id 1135", () => {
+      expect(getChainId(Chain.Lisk)).toBe("1135")
+    })
+  })
+
+  describe("World Chain", () => {
+    test("uses chain ID 480", () => {
+      expect(getChainId(Chain.WorldChain)).toBe("480")
+    })
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.WorldChain)).toBe(ZERO_ADDRESS)
+      expect(getDefaultPaymentTokenDecimals(Chain.WorldChain)).toEqual({
+        [ZERO_ADDRESS]: 18,
+        "0x4200000000000000000000000000000000000006": 18,
+      })
+    })
+
+    test("offers and wraps with the OP-stack WETH predeploy", () => {
+      const weth = "0x4200000000000000000000000000000000000006"
+      expect(getOfferPaymentToken(Chain.WorldChain)).toBe(weth)
+      expect(getOfferPaymentTokenDecimals(Chain.WorldChain)).toBe(18)
+      expect(getNativeWrapTokenAddress(Chain.WorldChain)).toBe(weth)
+      expect(usesNativeStablecoinOffers(Chain.WorldChain)).toBe(false)
+    })
+
+    test("uses the standard OpenSea Seaport, conduit, zone and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.WorldChain)).toBe(false)
+      expect(getDefaultConduit(Chain.WorldChain)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(getSeaportAddress(Chain.WorldChain)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.WorldChain)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.WorldChain)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+  })
+  describe("Kaia", () => {
+    const WKLAY = "0x19aac5f612f524b754ca7e7c41cbfa2e981a4432"
+
+    test("lists in native KAIA", () => {
+      expect(getListingPaymentToken(Chain.Kaia)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers in WKLAY (canonical wrapped KAIA)", () => {
+      expect(getOfferPaymentToken(Chain.Kaia)).toBe(WKLAY)
+    })
+
+    test("wraps native KAIA into WKLAY", () => {
+      expect(getNativeWrapTokenAddress(Chain.Kaia)).toBe(WKLAY)
+    })
+
+    test("uses 18 decimals for offer and listing tokens", () => {
+      expect(getOfferPaymentTokenDecimals(Chain.Kaia)).toBe(18)
+      expect(getDefaultPaymentTokenDecimals(Chain.Kaia)).toEqual({
+        [WKLAY]: 18,
+        [ZERO_ADDRESS]: 18,
+      })
+    })
+
+    test("uses the default OpenSea conduit", () => {
+      const result = getDefaultConduit(Chain.Kaia)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
+    test("uses the canonical Seaport 1.6, signed zone and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Kaia)).toBe(false)
+      expect(getSeaportAddress(Chain.Kaia)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Kaia)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Kaia)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+  })
+
+  describe("BOB (chain id 60808)", () => {
+    const BOB_WETH = "0x4200000000000000000000000000000000000006"
+
+    test("maps to chain id 60808", () => {
+      expect(getChainId(Chain.Bob)).toBe("60808")
+    })
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Bob)).toBe(ZERO_ADDRESS)
+      expect(getDefaultPaymentTokenDecimals(Chain.Bob)).toEqual({
+        [ZERO_ADDRESS]: 18,
+        [BOB_WETH]: 18,
+      })
+    })
+
+    test("offers and wraps with the OP-stack WETH predeploy", () => {
+      expect(getOfferPaymentToken(Chain.Bob)).toBe(BOB_WETH)
+      expect(getOfferPaymentTokenDecimals(Chain.Bob)).toBe(18)
+      expect(getNativeWrapTokenAddress(Chain.Bob)).toBe(BOB_WETH)
+    })
+
+    test("uses the standard OpenSea conduit, Seaport, zone and fee recipient", () => {
+      expect(getDefaultConduit(Chain.Bob)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(usesAlternateProtocol(Chain.Bob)).toBe(false)
+      expect(getSeaportAddress(Chain.Bob)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Bob)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Bob)).toBe(OPENSEA_FEE_RECIPIENT)
     })
   })
 })

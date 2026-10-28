@@ -21,6 +21,8 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
+Each value is the OpenSea API chain identifier (e.g. `Chain.Mainnet` is `"ethereum"`), and `getChainId()` maps an EVM chain to its numeric chain id (it throws for non-EVM chains such as `Chain.Solana`). Scroll, Taiko, Mode, Gnosis, Moonbeam, Lisk, World Chain, Kaia, BOB and Cronos are supported; see [Other EVM chains](https://github.com/ProjectOpenSea/opensea-sdk#other-evm-chains) in the README for their chain ids, default payment tokens and whether OpenSea's Seaport, conduit and signed zone are deployed there yet.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?

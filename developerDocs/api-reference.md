@@ -26,6 +26,26 @@ This comprehensive reference documents all OpenSea API endpoints available throu
 
 ---
 
+## Supported chains
+
+Chain arguments take a `Chain` enum value (the OpenSea API chain identifier). See the
+[FAQ](faq.md#what-chains-are-supported) for the full list. For example, `Chain.Gnosis`
+(`"gnosis"`, chain id 100):
+
+```typescript
+import { Chain } from "@opensea/sdk";
+
+// DEMO PLACEHOLDER contract address
+const { nfts } = await openseaSDK.api.nfts.getNFTsByContract(
+  "0x0000000000000000000000000000000000000001",
+  10,
+  undefined,
+  Chain.Gnosis,
+);
+```
+
+---
+
 ## Calling the API
 
 Reads and writes are grouped by domain on `sdk.api`:
@@ -475,6 +495,16 @@ const { collections } = await openseaSDK.api.collections.getTopPfpCollections({
 ```
 
 **Parameters:** `GetTopPfpCollectionsArgs`: `limit` (1-50, required) and an optional `chain`. Omit `chain` to rank across every chain.
+
+Any `Chain` value works as the filter, for example World Chain:
+
+```typescript
+const { collections: worldChainTop } =
+  await openseaSDK.api.collections.getTopPfpCollections({
+    limit: 10,
+    chain: Chain.WorldChain,
+  });
+```
 
 **Returns:** `TopPfpCollectionsResponse` with `collections`.
 
