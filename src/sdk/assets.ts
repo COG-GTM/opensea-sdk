@@ -395,6 +395,7 @@ export class AssetsManager {
 
     // Check which assets need approval and build approval calldata
     const approvalsNeeded: Array<{ target: string; callData: string }> = []
+    const allowanceResets: Array<{ target: string; callData: string }> = []
     const processedContracts = new Set<string>()
 
     for (const { asset, amount } of assets) {
@@ -445,7 +446,7 @@ export class AssetsManager {
         // Some tokens (e.g. USDT) revert when changing one nonzero allowance
         // to another, so clear a leftover allowance first.
         if (allowance > 0n) {
-          approvalsNeeded.push({
+          allowanceResets.push({
             target: asset.tokenAddress,
             callData: cc.encodeFunctionData({
               abi: APPROVE_ABI,
@@ -468,6 +469,18 @@ export class AssetsManager {
       }
     }
 
+    // Allowance resets must come from the owner and be mined before the new
+    // approval, so they are sent as their own transactions, never batched.
+    for (const { target, callData } of allowanceResets) {
+      await this.sendApprovalDirect(
+        target,
+        callData,
+        fromAddress,
+        overrides,
+        "Resetting token allowance before approval",
+      )
+    }
+
     // No approvals needed
     if (approvalsNeeded.length === 0) {
       return undefined
@@ -476,24 +489,13 @@ export class AssetsManager {
     // Single approval: send directly using the signer
     if (approvalsNeeded.length === 1) {
       const { target, callData } = approvalsNeeded[0]
-      const wallet = this.context.wallet
-      if (!("signer" in wallet)) {
-        throw new Error("A signer is required to approve assets")
-      }
-      const tx = await wallet.signer.sendTransaction({
-        to: target,
-        data: callData,
-        from: fromAddress,
-        overrides: overrides as Record<string, unknown>,
-      })
-
-      await this.context.confirmTransaction(
-        tx.hash,
-        EventType.ApproveAllAssets,
+      return this.sendApprovalDirect(
+        target,
+        callData,
+        fromAddress,
+        overrides,
         "Approving asset for transfer",
       )
-
-      return tx.hash
     }
 
     // Multiple approvals: use Multicall3
@@ -527,6 +529,36 @@ export class AssetsManager {
       })
       throw error
     }
+  }
+
+  /**
+   * Send one approval transaction from the owner's signer and confirm it.
+   */
+  private async sendApprovalDirect(
+    target: string,
+    callData: string,
+    fromAddress: string,
+    overrides: Record<string, unknown> | undefined,
+    description: string,
+  ): Promise<string> {
+    const wallet = this.context.wallet
+    if (!("signer" in wallet)) {
+      throw new Error("A signer is required to approve assets")
+    }
+    const tx = await wallet.signer.sendTransaction({
+      to: target,
+      data: callData,
+      from: fromAddress,
+      overrides: overrides as Record<string, unknown>,
+    })
+
+    await this.context.confirmTransaction(
+      tx.hash,
+      EventType.ApproveAllAssets,
+      description,
+    )
+
+    return tx.hash
   }
 
   /**
