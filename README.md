@@ -256,6 +256,20 @@ console.log(activity.windows["24h"]?.volumeUsd)
 The SDK exposes camel-cased fields. A requested window is absent when the token
 has no swaps in that period.
 
+### Scroll
+
+Scroll (chain id `534352`) is available as `Chain.Scroll`. Listings default to
+native ETH and offers to WETH at `0x5300000000000000000000000000000000000004`.
+
+```typescript
+import { Chain, OpenSeaSDK } from "@opensea/sdk";
+
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Scroll, apiKey: "YOUR_API_KEY" });
+
+// DEMO PLACEHOLDER collection slug, not a real Scroll collection
+const { listings } = await sdk.api.listings.getAllListings("demo-placeholder-collection");
+```
+
 ### Real-time events
 
 Subscribe to marketplace events over WebSocket from the `@opensea/sdk/stream`
