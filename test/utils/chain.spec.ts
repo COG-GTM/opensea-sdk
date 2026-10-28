@@ -32,6 +32,7 @@ import {
   usesAlternateProtocol,
   usesNativeStablecoinOffers,
 } from "../../src/utils/chain"
+import { CHAIN_ID_MAP } from "../../src/utils/chainIds.generated"
 
 describe("Utils: chain", () => {
   describe("chain helper exhaustiveness", () => {
@@ -99,6 +100,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Kaia, "8217"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -106,6 +108,11 @@ describe("Utils: chain", () => {
         expect(getChainId(chain)).toBe(expectedId)
       })
     }
+
+    test("CHAIN_ID_MAP stays sorted by numeric chain id", () => {
+      const ids = Object.values(CHAIN_ID_MAP).map(Number)
+      expect(ids).toEqual([...ids].sort((a, b) => a - b))
+    })
 
     test("throws for unknown chain", () => {
       expect(() => getChainId("UNKNOWN_CHAIN" as Chain)).toThrow(
@@ -687,6 +694,44 @@ describe("Utils: chain", () => {
       expect(() => getNativeWrapTokenAddress(Chain.Arc)).toThrow(
         "0x3600000000000000000000000000000000000000",
       )
+    })
+  })
+  describe("Kaia", () => {
+    const WKLAY = "0x19aac5f612f524b754ca7e7c41cbfa2e981a4432"
+
+    test("lists in native KAIA", () => {
+      expect(getListingPaymentToken(Chain.Kaia)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers in WKLAY (canonical wrapped KAIA)", () => {
+      expect(getOfferPaymentToken(Chain.Kaia)).toBe(WKLAY)
+    })
+
+    test("wraps native KAIA into WKLAY", () => {
+      expect(getNativeWrapTokenAddress(Chain.Kaia)).toBe(WKLAY)
+    })
+
+    test("uses 18 decimals for offer and listing tokens", () => {
+      expect(getOfferPaymentTokenDecimals(Chain.Kaia)).toBe(18)
+      expect(getDefaultPaymentTokenDecimals(Chain.Kaia)).toEqual({
+        [WKLAY]: 18,
+        [ZERO_ADDRESS]: 18,
+      })
+    })
+
+    test("uses the default OpenSea conduit", () => {
+      const result = getDefaultConduit(Chain.Kaia)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
+    test("uses the canonical Seaport 1.6, signed zone and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Kaia)).toBe(false)
+      expect(getSeaportAddress(Chain.Kaia)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Kaia)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Kaia)).toBe(OPENSEA_FEE_RECIPIENT)
     })
   })
 })
