@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Scroll, "534352"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -687,6 +688,36 @@ describe("Utils: chain", () => {
       expect(() => getNativeWrapTokenAddress(Chain.Arc)).toThrow(
         "0x3600000000000000000000000000000000000000",
       )
+    })
+  })
+
+  describe("Scroll", () => {
+    const SCROLL_WETH = "0x5300000000000000000000000000000000000004"
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Scroll)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers in WETH", () => {
+      expect(getOfferPaymentToken(Chain.Scroll)).toBe(SCROLL_WETH)
+      expect(getOfferPaymentTokenDecimals(Chain.Scroll)).toBe(18)
+    })
+
+    test("wraps native ETH through WETH", () => {
+      expect(getNativeWrapTokenAddress(Chain.Scroll)).toBe(SCROLL_WETH)
+    })
+
+    test("uses the standard OpenSea protocol addresses", () => {
+      expect(usesAlternateProtocol(Chain.Scroll)).toBe(false)
+      expect(getDefaultConduit(Chain.Scroll)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(getSeaportAddress(Chain.Scroll)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Scroll)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Scroll)).toBe(OPENSEA_FEE_RECIPIENT)
     })
   })
 })
