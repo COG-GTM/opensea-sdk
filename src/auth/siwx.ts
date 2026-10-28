@@ -73,6 +73,7 @@ const IP_REGEX =
 const LOCALHOST_REGEX = /^localhost(:[0-9]{1,5})?$/
 const NONCE_REGEX = /^[a-zA-Z0-9]{8,}$/
 const SCHEME_REGEX = /^([a-zA-Z][a-zA-Z0-9+-.]*)$/
+const WHITESPACE_REGEX = /\s/
 const FIELD_PREFIXES = {
   uri: "URI: ",
   version: "Version: ",
@@ -132,6 +133,7 @@ export function createSiwxMessage(options: CreateSiwxMessageOptions): string {
     statement: options.statement,
     uri,
     version,
+    requestId,
     resources,
   })
 
@@ -361,6 +363,7 @@ function validateFields({
   statement,
   uri,
   version,
+  requestId,
   resources,
 }: {
   chainId: number
@@ -370,6 +373,7 @@ function validateFields({
   statement?: string
   uri: string
   version: string
+  requestId?: string
   resources?: string[]
 }) {
   if (chainId !== Math.floor(chainId)) {
@@ -390,17 +394,30 @@ function validateFields({
   if (scheme && !SCHEME_REGEX.test(scheme)) {
     throw new Error(`Invalid scheme: ${scheme}`)
   }
+  if (hasLineBreakOrControl(uri)) {
+    throw new Error("URI must not include newlines or control characters")
+  }
   if (!isUri(uri)) {
     throw new Error(`Invalid uri: ${uri}`)
   }
   if (version !== "1") {
     throw new Error(`Invalid version: ${version}`)
   }
-  if (statement?.includes("\n")) {
+  if (statement !== undefined && hasLineBreakOrControl(statement)) {
     throw new Error("Statement must not include newlines")
+  }
+  if (requestId !== undefined && hasLineBreakOrControl(requestId)) {
+    throw new Error(
+      "Request ID must not include newlines or control characters",
+    )
   }
   if (resources) {
     for (const resource of resources) {
+      if (hasLineBreakOrControl(resource)) {
+        throw new Error(
+          "Resource URI must not include newlines or control characters",
+        )
+      }
       if (!isUri(resource)) {
         throw new Error(`Invalid resource URI: ${resource}`)
       }
@@ -408,7 +425,34 @@ function validateFields({
   }
 }
 
+/**
+ * True for C0/C1 control characters (CR, LF and tab included) and the Unicode
+ * line and paragraph separators, any of which can split a message line.
+ */
+function hasLineBreakOrControl(value: string): boolean {
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i)
+    if (
+      code <= 0x1f ||
+      (code >= 0x7f && code <= 0x9f) ||
+      code === 0x2028 ||
+      code === 0x2029
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * `new URL()` silently strips tab/CR/LF and trims surrounding whitespace, so
+ * the raw value, which is spliced into the signed message verbatim, is checked
+ * for whitespace first.
+ */
 function isUri(value: string): boolean {
+  if (WHITESPACE_REGEX.test(value)) {
+    return false
+  }
   try {
     new URL(value)
     return true
