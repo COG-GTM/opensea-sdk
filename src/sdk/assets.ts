@@ -3,15 +3,10 @@ import {
   ERC20_ABI,
   ERC721_ABI,
   ERC1155_ABI,
-  MULTICALL3_ABI,
   SET_APPROVAL_FOR_ALL_ABI,
   TRANSFER_HELPER_ABI,
 } from "../abi/abis"
-import {
-  MAX_UINT256,
-  MULTICALL3_ADDRESS,
-  TRANSFER_HELPER_ADDRESS,
-} from "../constants"
+import { MAX_UINT256, TRANSFER_HELPER_ADDRESS } from "../constants"
 import {
   type Amount,
   type AssetWithTokenStandard,
@@ -299,7 +294,7 @@ export class AssetsManager {
     if (unapprovedAssets.length > 0) {
       throw new Error(
         `The following asset(s) are not approved for transfer to the OpenSea conduit:\n${unapprovedAssets.join("\n")}\n\n` +
-          `Please approve these assets before transferring. You can use the batchApproveAssets() method to approve multiple assets efficiently in a single transaction.`,
+          `Please approve these assets before transferring. You can use the batchApproveAssets() method to approve them, one transaction per token contract.`,
       )
     }
 
@@ -336,16 +331,17 @@ export class AssetsManager {
 
   /**
    * Batch approve multiple assets for transfer to the OpenSea conduit.
-   * This method checks which assets need approval and batches them efficiently:
-   * - 0 approvals needed: Returns early
-   * - 1 approval needed: Sends single transaction
-   * - 2+ approvals needed: Uses Multicall3 to batch all approvals in one transaction
+   * This method checks which assets need approval and sends one approval
+   * transaction per token contract, sequentially, from `fromAddress`.
+   * Approvals cannot be bundled through a relay contract such as Multicall3:
+   * `setApprovalForAll` and `approve` key on `msg.sender`, so the relay, not
+   * the wallet, would be approved.
    *
    * @param options
    * @param options.assets Array of assets to approve for transfer
    * @param options.fromAddress The address that owns the assets
    * @param options.overrides Transaction overrides, ignored if not set.
-   * @returns Transaction hash of the approval transaction, or undefined if no approvals needed
+   * @returns Transaction hash of the last approval transaction, or undefined if no approvals needed
    *
    * @throws Error if the fromAddress is not available through wallet or provider.
    */
@@ -444,60 +440,41 @@ export class AssetsManager {
       return undefined
     }
 
-    // Single approval: send directly using the signer
-    if (approvalsNeeded.length === 1) {
-      const { target, callData } = approvalsNeeded[0]
-      const wallet = this.context.wallet
-      if (!("signer" in wallet)) {
-        throw new Error("A signer is required to approve assets")
+    const wallet = this.context.wallet
+    if (!("signer" in wallet)) {
+      throw new Error("A signer is required to approve assets")
+    }
+
+    let lastHash: string | undefined
+    for (const [index, { target, callData }] of approvalsNeeded.entries()) {
+      try {
+        const tx = await wallet.signer.sendTransaction({
+          to: target,
+          data: callData,
+          from: fromAddress,
+          overrides,
+        })
+
+        await this.context.confirmTransaction(
+          tx.hash,
+          EventType.ApproveAllAssets,
+          approvalsNeeded.length === 1
+            ? "Approving asset for transfer"
+            : `Approving asset ${index + 1} of ${approvalsNeeded.length} for transfer`,
+        )
+
+        lastHash = tx.hash
+      } catch (error) {
+        console.error(error)
+        this.context.dispatch(EventType.TransactionDenied, {
+          error,
+          accountAddress: fromAddress,
+        })
+        throw error
       }
-      const tx = await wallet.signer.sendTransaction({
-        to: target,
-        data: callData,
-        from: fromAddress,
-        overrides: overrides as Record<string, unknown>,
-      })
-
-      await this.context.confirmTransaction(
-        tx.hash,
-        EventType.ApproveAllAssets,
-        "Approving asset for transfer",
-      )
-
-      return tx.hash
     }
 
-    // Multiple approvals: use Multicall3
-    const calls = approvalsNeeded.map(({ target, callData }) => ({
-      target,
-      allowFailure: false,
-      callData,
-    }))
-
-    try {
-      const transaction = await cc.writeContract({
-        address: MULTICALL3_ADDRESS,
-        abi: MULTICALL3_ABI,
-        functionName: "aggregate3",
-        args: [calls],
-        overrides: { ...overrides, from: fromAddress },
-      })
-
-      await this.context.confirmTransaction(
-        transaction.hash,
-        EventType.ApproveAllAssets,
-        `Batch approving ${approvalsNeeded.length} asset(s) for transfer`,
-      )
-
-      return transaction.hash
-    } catch (error) {
-      console.error(error)
-      this.context.dispatch(EventType.TransactionDenied, {
-        error,
-        accountAddress: fromAddress,
-      })
-      throw error
-    }
+    return lastHash
   }
 
   /**
