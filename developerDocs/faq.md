@@ -21,7 +21,7 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
-Each chain maps to its numeric EVM chain id through `getChainId()` (for example `Chain.Lisk` is `1135`, `Chain.Base` is `8453`).
+Each EVM chain maps to its numeric chain id through `getChainId()` (for example `Chain.Lisk` is `1135`, `Chain.Base` is `8453`); it throws for non-EVM chains such as `Chain.Solana`.
 
 Please use methods in the v2 API for multichain capabilities.
 
