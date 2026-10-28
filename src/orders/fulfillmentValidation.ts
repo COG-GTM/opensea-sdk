@@ -510,21 +510,37 @@ export function requireCallMatchesOrder(
       `the call has ${call.criteriaResolvers.length} criteria resolver(s) for ${criteriaItems} criteria item(s)`,
     )
   }
-  if (tokenId !== undefined) {
-    const wanted = requireUint(tokenId, "tokenId")
-    call.criteriaResolvers.forEach((raw, i) => {
-      const resolver = requireRecord(raw, `criteriaResolvers[${i}]`)
-      const identifier = requireUint(
-        resolver.identifier,
-        `criteriaResolvers[${i}].identifier`,
+  // Each resolver must target a distinct criteria item of this order, so the
+  // count check above means every criteria item is resolved exactly once.
+  const criteriaPositions = new Set([
+    ...order.offer.flatMap((item, i) =>
+      isCriteriaItem(item) ? [`0:${i}`] : [],
+    ),
+    ...order.consideration.flatMap((item, i) =>
+      isCriteriaItem(item) ? [`1:${i}`] : [],
+    ),
+  ])
+  const wanted =
+    tokenId === undefined ? undefined : requireUint(tokenId, "tokenId")
+  call.criteriaResolvers.forEach((raw, i) => {
+    const field = `criteriaResolvers[${i}]`
+    const resolver = requireRecord(raw, field)
+    const orderIndex = requireUint(resolver.orderIndex, `${field}.orderIndex`)
+    const side = requireUint(resolver.side, `${field}.side`)
+    const index = requireUint(resolver.index, `${field}.index`)
+    const position = `${side}:${index}`
+    if (orderIndex !== 0n || !criteriaPositions.delete(position)) {
+      fail(
+        `${field} targets order ${orderIndex} side ${side} item ${index}, which is not an unresolved criteria item`,
       )
-      if (identifier !== wanted) {
-        fail(
-          `criteriaResolvers[${i}] resolves token ${identifier}, not the requested token ${wanted}`,
-        )
-      }
-    })
-  }
+    }
+    const identifier = requireUint(resolver.identifier, `${field}.identifier`)
+    if (identifier !== wanted) {
+      fail(
+        `${field} resolves token ${identifier}, not the requested token ${wanted}`,
+      )
+    }
+  })
 
   // Tips are paid by the fulfiller on top of the signed order. The API only
   // adds them for optional creator fees, and only in the order's own currency.
@@ -534,10 +550,15 @@ export function requireCallMatchesOrder(
         `the call adds ${order.tips.length} consideration item(s) the order does not include`,
       )
     }
-    const paymentItems = order.consideration.filter(
-      (item) =>
-        item.itemType === ITEM_TYPE_NATIVE || item.itemType === ITEM_TYPE_ERC20,
-    )
+    const isPayment = (item: Item) =>
+      item.itemType === ITEM_TYPE_NATIVE || item.itemType === ITEM_TYPE_ERC20
+    // A listing is priced in its consideration; an offer is priced in the
+    // currency it offers, which the fulfiller receives and pays fees from.
+    const offeredPayments = order.offer.filter(isPayment)
+    const paymentItems = [
+      ...offeredPayments,
+      ...order.consideration.filter(isPayment),
+    ]
     for (const tip of order.tips) {
       const matchesCurrency = paymentItems.some(
         (item) =>
@@ -552,10 +573,13 @@ export function requireCallMatchesOrder(
     // The hash does not cover tips, so cap them against the lowest price the
     // order can reach, which is what the buyer pays at the end of an auction.
     for (const currency of paymentItems) {
-      const inCurrency = (item: ConsiderationItem) =>
+      const inCurrency = (item: Item) =>
         item.itemType === currency.itemType &&
         sameAddress(item.token, currency.token)
-      const price = lowestTotal(order.consideration.filter(inCurrency))
+      const offered = offeredPayments.filter(inCurrency)
+      const price = lowestTotal(
+        offered.length > 0 ? offered : order.consideration.filter(inCurrency),
+      )
       const fees = sumMaxAmounts(order.tips.filter(inCurrency))
       const cap = (price * MAX_OPTIONAL_FEE_BPS) / 10000n
       if (fees > cap) {

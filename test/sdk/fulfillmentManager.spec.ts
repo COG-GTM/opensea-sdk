@@ -707,6 +707,71 @@ describe("SDK: FulfillmentManager", () => {
       )
     })
 
+    test("a criteria resolver that targets a non-criteria item", async () => {
+      const misplaced = criteriaOfferTransaction(["123"])
+      misplaced.inputData.criteriaResolvers = [
+        {
+          orderIndex: 0,
+          side: 0,
+          index: 0,
+          identifier: "123",
+          criteriaProof: [],
+        },
+      ]
+      await expectRejected(
+        misplaced,
+        /criteriaResolvers\[0\] targets order 0 side 0 item 0, which is not an unresolved criteria item/,
+        { tokenId: "123" },
+        hashOf(misplaced),
+      )
+    })
+
+    test("criteria resolvers that resolve one item twice and leave another open", async () => {
+      const base = criteriaOfferTransaction(["123"])
+      const parameters = base.inputData.advancedOrder.parameters as any
+      const criteriaItem = parameters.consideration[0]
+      const twoItems = advancedOrderTransaction({
+        value: "0",
+        parameters: {
+          ...parameters,
+          consideration: [criteriaItem, criteriaItem],
+          totalOriginalConsiderationItems: "2",
+        },
+        criteriaResolvers: [0, 0].map((index) => ({
+          orderIndex: 0,
+          side: 1,
+          index,
+          identifier: "123",
+          criteriaProof: [],
+        })),
+      })
+      await expectRejected(
+        twoItems,
+        /criteriaResolvers\[1\] targets order 0 side 1 item 0, which is not an unresolved criteria item/,
+        { tokenId: "123" },
+        hashOf(twoItems),
+      )
+    })
+
+    test("a criteria resolver for another order in the call", async () => {
+      const otherOrder = criteriaOfferTransaction(["123"])
+      otherOrder.inputData.criteriaResolvers = [
+        {
+          orderIndex: 1,
+          side: 1,
+          index: 0,
+          identifier: "123",
+          criteriaProof: [],
+        },
+      ]
+      await expectRejected(
+        otherOrder,
+        /targets order 1 side 1 item 0/,
+        { tokenId: "123" },
+        hashOf(otherOrder),
+      )
+    })
+
     test("a call that ignores the requested recipient", async () => {
       // A zero recipient delivers to the buyer, not to the requested address.
       await expectRejected(
@@ -920,6 +985,54 @@ describe("SDK: FulfillmentManager", () => {
 
       expect(mockSigner.sendTransaction.mock.calls[0][0].value).toBe(
         BigInt(PRICE) + BigInt(creatorFee),
+      )
+    })
+
+    /** The criteria offer, fulfilled for token 123, with an optional WETH fee. */
+    function tippedCriteriaOffer(fee: string) {
+      const base = criteriaOfferTransaction(["123"])
+      const parameters = base.inputData.advancedOrder.parameters as any
+      return advancedOrderTransaction({
+        value: "0",
+        parameters: {
+          ...parameters,
+          consideration: [
+            ...parameters.consideration,
+            {
+              itemType: 1,
+              token: parameters.offer[0].token,
+              identifierOrCriteria: "0",
+              startAmount: fee,
+              endAmount: fee,
+              recipient: "0x000000000000000000000000000000000000c0de",
+            },
+          ],
+        },
+        criteriaResolvers: base.inputData.criteriaResolvers,
+      })
+    }
+
+    test("accepts an optional creator fee on an ERC20 offer, capped by the bid", async () => {
+      respondWith(tippedCriteriaOffer((BigInt(PRICE) / 10n).toString()))
+
+      await fulfillmentManager.fulfillOrder({
+        order: orderFor(mockOfferOrderV2),
+        accountAddress: BUYER,
+        tokenId: "123",
+        includeOptionalCreatorFees: true,
+      })
+
+      expect(mockSigner.sendTransaction).toHaveBeenCalledTimes(1)
+      expect(mockSigner.sendTransaction.mock.calls[0][0].value).toBe(0n)
+    })
+
+    test("optional fees above the cap of an ERC20 offer's bid", async () => {
+      const tipped = tippedCriteriaOffer((BigInt(PRICE) / 10n + 1n).toString())
+      await expectRejected(
+        tipped,
+        /exceed 1000 bps of the order's price 99000000/,
+        { tokenId: "123", includeOptionalCreatorFees: true },
+        hashOf(tipped),
       )
     })
   })
