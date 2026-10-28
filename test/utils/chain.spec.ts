@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Lisk, "1135"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -164,6 +165,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.Ink,
         Chain.Soneium,
+        Chain.Lisk,
       ]
       const expectedAddress = "0x4200000000000000000000000000000000000006"
 
@@ -339,6 +341,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.MegaETH,
         Chain.Ink,
+        Chain.Lisk,
       ]
 
       for (const chain of ethChains) {
@@ -687,6 +690,37 @@ describe("Utils: chain", () => {
       expect(() => getNativeWrapTokenAddress(Chain.Arc)).toThrow(
         "0x3600000000000000000000000000000000000000",
       )
+    })
+  })
+
+  describe("Lisk", () => {
+    const LISK_WETH = "0x4200000000000000000000000000000000000006"
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Lisk)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers and wraps in the OP-stack WETH predeploy", () => {
+      expect(getOfferPaymentToken(Chain.Lisk)).toBe(LISK_WETH)
+      expect(getNativeWrapTokenAddress(Chain.Lisk)).toBe(LISK_WETH)
+      expect(getOfferPaymentTokenDecimals(Chain.Lisk)).toBe(18)
+    })
+
+    test("uses the standard OpenSea conduit, Seaport, zone and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Lisk)).toBe(false)
+      expect(getDefaultConduit(Chain.Lisk)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(getSeaportAddress(Chain.Lisk)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Lisk)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Lisk)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+
+    test("maps to chain id 1135", () => {
+      expect(getChainId(Chain.Lisk)).toBe("1135")
     })
   })
 })
