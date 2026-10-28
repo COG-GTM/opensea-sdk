@@ -26,6 +26,7 @@ export const CHAIN_ID_MAP: Record<string, string> = {
   b3: "8333",
   base: "8453",
   ape_chain: "33139",
+  mode: "34443",
   arbitrum: "42161",
   avalanche: "43114",
   gunzilla: "43419",
