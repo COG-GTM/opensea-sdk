@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Bob, "60808"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -164,6 +165,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.Ink,
         Chain.Soneium,
+        Chain.Bob,
       ]
       const expectedAddress = "0x4200000000000000000000000000000000000006"
 
@@ -339,6 +341,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.MegaETH,
         Chain.Ink,
+        Chain.Bob,
       ]
 
       for (const chain of ethChains) {
@@ -687,6 +690,41 @@ describe("Utils: chain", () => {
       expect(() => getNativeWrapTokenAddress(Chain.Arc)).toThrow(
         "0x3600000000000000000000000000000000000000",
       )
+    })
+  })
+
+  describe("BOB (chain id 60808)", () => {
+    const BOB_WETH = "0x4200000000000000000000000000000000000006"
+
+    test("maps to chain id 60808", () => {
+      expect(getChainId(Chain.Bob)).toBe("60808")
+    })
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Bob)).toBe(ZERO_ADDRESS)
+      expect(getDefaultPaymentTokenDecimals(Chain.Bob)).toEqual({
+        [ZERO_ADDRESS]: 18,
+        [BOB_WETH]: 18,
+      })
+    })
+
+    test("offers and wraps with the OP-stack WETH predeploy", () => {
+      expect(getOfferPaymentToken(Chain.Bob)).toBe(BOB_WETH)
+      expect(getOfferPaymentTokenDecimals(Chain.Bob)).toBe(18)
+      expect(getNativeWrapTokenAddress(Chain.Bob)).toBe(BOB_WETH)
+    })
+
+    test("uses the standard OpenSea conduit, Seaport, zone and fee recipient", () => {
+      expect(getDefaultConduit(Chain.Bob)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(usesAlternateProtocol(Chain.Bob)).toBe(false)
+      expect(getSeaportAddress(Chain.Bob)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Bob)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Bob)).toBe(OPENSEA_FEE_RECIPIENT)
     })
   })
 })
