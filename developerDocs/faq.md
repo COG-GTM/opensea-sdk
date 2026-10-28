@@ -21,6 +21,8 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
+For example, Cronos is `Chain.Cronos` (`"cronos"`, chain id 25): listings default to native CRO and offers to WCRO (`0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23`). Seaport 1.6, the OpenSea conduit and the signed zone are not deployed on Cronos yet, so Cronos orders cannot settle on-chain until they are.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
