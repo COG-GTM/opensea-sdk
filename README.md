@@ -256,6 +256,30 @@ console.log(activity.windows["24h"]?.volumeUsd)
 The SDK exposes camel-cased fields. A requested window is absent when the token
 has no swaps in that period.
 
+### World Chain
+
+World Chain (chain ID 480) is `Chain.WorldChain` (`"world_chain"`). Listings
+are priced in native ETH and offers use the OP-stack WETH predeploy
+`0x4200000000000000000000000000000000000006`, so the same calls work as on Base:
+
+```typescript
+import { Chain } from "@opensea/sdk";
+
+const activity = await sdk.api.tokens.getTokenActivityStats(
+  Chain.WorldChain,
+  "0x4200000000000000000000000000000000000006", // WETH on World Chain
+  { windows: ["24h"] },
+)
+
+// DEMO PLACEHOLDER collection slug, not a real collection
+const collection = await sdk.api.collections.getCollection(
+  "demo-placeholder-world-chain",
+);
+```
+
+Seaport 1.6, the OpenSea conduit and the signed zone are not yet deployed on
+World Chain, so orders there cannot settle on-chain until OpenSea deploys them.
+
 ### Real-time events
 
 Subscribe to marketplace events over WebSocket from the `@opensea/sdk/stream`
