@@ -144,12 +144,46 @@ describe("AssetsManager: batchApproveAssets", () => {
       [OPENSEA_CONDUIT_ADDRESS, 0n],
       [OPENSEA_CONDUIT_ADDRESS, 100n],
     ])
+    // Both come from the owner's signer, never through Multicall3, and the
+    // reset is confirmed before the new approval is sent.
+    expect(h.writeContract).not.toHaveBeenCalled()
+    expect(h.sendTransaction.mock.calls.map(c => c[0].to)).toEqual([
+      TOKEN,
+      TOKEN,
+    ])
+    expect(h.sendTransaction.mock.calls.map(c => c[0].from)).toEqual([
+      FROM,
+      FROM,
+    ])
+    expect(h.confirmTransaction).toHaveBeenCalledTimes(2)
+    expect(h.confirmTransaction.mock.invocationCallOrder[0]).toBeLessThan(
+      h.sendTransaction.mock.invocationCallOrder[1],
+    )
+  })
+
+  test("sends a reset directly even when other approvals are batched", async () => {
+    const other = "0x1111111111111111111111111111111111111111" // DEMO PLACEHOLDER
+    const h = harness(Chain.Gnosis)
+    h.readContract.mockImplementation(async ({ address }) =>
+      address === TOKEN ? 60n : 0n,
+    )
+
+    await h.manager.batchApproveAssets({
+      assets: [erc20(TOKEN, "100"), erc20(other, "5")],
+      fromAddress: FROM,
+    })
+
+    expect(h.sendTransaction).toHaveBeenCalledTimes(1)
+    expect(h.sendTransaction.mock.calls[0][0].to).toBe(TOKEN)
     expect(h.writeContract).toHaveBeenCalledTimes(1)
     const [{ args }] = h.writeContract.mock.calls[0]
     expect(args[0].map((c: { target: string }) => c.target)).toEqual([
       TOKEN,
-      TOKEN,
+      other,
     ])
+    expect(h.sendTransaction.mock.invocationCallOrder[0]).toBeLessThan(
+      h.writeContract.mock.invocationCallOrder[0],
+    )
   })
 
   test("does not reset when there is no existing allowance", async () => {
