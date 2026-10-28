@@ -151,6 +151,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x3bd359c1119da7da1d913d1c4d2b7c461115433a" // WMON
     case Chain.Robinhood:
       return "0x0bd7d308f8e1639fab988df18a8011f41eacad73" // WETH
+    case Chain.Cronos:
+      return "0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23" // WCRO
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -231,6 +233,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return "0x0000000000000000000000000000000000000000" // ANIME
     case Chain.Robinhood:
       return "0x0000000000000000000000000000000000000000" // ETH
+    case Chain.Cronos:
+      return "0x0000000000000000000000000000000000000000" // CRO
     case Chain.Arc:
       return ZERO_ADDRESS
     case Chain.StableChain:
