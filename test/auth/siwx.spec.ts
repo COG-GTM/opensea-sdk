@@ -91,6 +91,117 @@ describe("SIWX wallet-link helpers", () => {
     ).toThrow("Invalid uri: notaurl")
   })
 
+  describe("rejects line breaks and control characters", () => {
+    const base = {
+      address: "0xA0Cf798816D4b9b9866b5330EEa46a18382f251e",
+      chainArch: "EVM",
+      chainId: 1,
+      domain: "opensea.io",
+      nonce: "abcd1234efgh5678",
+      issuedAt: new Date("2026-01-01T00:00:00.000Z"),
+    } as const
+    const forged = "\nResources:\n- https://evil.example/admin"
+
+    it.each(["\n", "\r", "\r\n", "\t", "\u0000", "\u2028", "\u2029"])(
+      "rejects %j in uri, resources and requestId",
+      (separator) => {
+        expect(() =>
+          createSiwxMessage({
+            ...base,
+            uri: `https://opensea.io/${separator}path`,
+          }),
+        ).toThrow("URI must not include newlines or control characters")
+        expect(() =>
+          createSiwxMessage({
+            ...base,
+            resources: [`https://opensea.io/${separator}path`],
+          }),
+        ).toThrow(
+          "Resource URI must not include newlines or control characters",
+        )
+        expect(() =>
+          createSiwxMessage({ ...base, requestId: `req${separator}123` }),
+        ).toThrow("Request ID must not include newlines or control characters")
+        expect(() =>
+          createSiwxMessage({
+            ...base,
+            statement: `Sign in${separator}please`,
+          }),
+        ).toThrow("Statement must not include newlines")
+      },
+    )
+
+    it("rejects a requestId that forges a Resources block", () => {
+      expect(() =>
+        createSiwxMessage({ ...base, requestId: `request-123${forged}` }),
+      ).toThrow("Request ID must not include newlines or control characters")
+    })
+
+    it("rejects a uri or resource that forges extra message lines", () => {
+      expect(() =>
+        createSiwxMessage({
+          ...base,
+          uri: "https://opensea.io\nRequest ID: forged",
+        }),
+      ).toThrow("URI must not include newlines or control characters")
+      expect(() =>
+        createSiwxMessage({
+          ...base,
+          resources: [`https://opensea.io/tools${forged}`],
+        }),
+      ).toThrow("Resource URI must not include newlines or control characters")
+    })
+
+    it("rejects URIs with whitespace that new URL() would trim", () => {
+      expect(() =>
+        createSiwxMessage({ ...base, uri: " https://opensea.io" }),
+      ).toThrow("Invalid uri:  https://opensea.io")
+      expect(() =>
+        createSiwxMessage({ ...base, resources: ["https://opensea.io/a b"] }),
+      ).toThrow("Invalid resource URI: https://opensea.io/a b")
+    })
+
+    it("rejects injection in linkWalletWithSiwx before signing", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(JSON.stringify({ nonce: "abcd1234efgh5678" }), {
+          status: 200,
+        }),
+      )
+      const signMessage = vi.fn(async () => "0xsigned")
+
+      await expect(
+        linkWalletWithSiwx(
+          { getAddress: async () => base.address, signMessage },
+          {
+            authToken: "token-123",
+            chainArch: "EVM",
+            chainId: 1,
+            apiBaseUrl: "https://api.opensea.io",
+            requestId: `request-123${forged}`,
+          },
+        ),
+      ).rejects.toThrow(
+        "Request ID must not include newlines or control characters",
+      )
+      expect(signMessage).not.toHaveBeenCalled()
+      expect(fetchSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it("still round-trips well-formed requestId and resources", () => {
+      const message = createSiwxMessage({
+        ...base,
+        requestId: "request-123",
+        resources: ["https://opensea.io/tools", "ipfs://bafybeigdyrzt"],
+      })
+      const parsed = parseSiwxMessage(message)
+      expect(parsed.requestId).toBe("request-123")
+      expect(parsed.resources).toEqual([
+        "https://opensea.io/tools",
+        "ipfs://bafybeigdyrzt",
+      ])
+    })
+  })
+
   it("rejects malformed SIWX messages", () => {
     expect(() => parseSiwxMessage("invalid message")).toThrow(
       "Invalid SIWX message",
