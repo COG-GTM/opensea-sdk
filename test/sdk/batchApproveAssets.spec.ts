@@ -34,6 +34,8 @@ function harness(chain: Chain = Chain.Mainnet, allowance = 0n) {
 
   return {
     manager: new AssetsManager(context),
+    dispatch: (context as unknown as { dispatch: ReturnType<typeof vi.fn> })
+      .dispatch,
     sendTransaction,
     writeContract,
     encodeFunctionData,
@@ -196,6 +198,34 @@ describe("AssetsManager: batchApproveAssets", () => {
       FROM,
       FROM,
     ])
+  })
+
+  test("dispatches TransactionDenied when the owner rejects a direct approval", async () => {
+    const otherA = "0x1111111111111111111111111111111111111111" // DEMO PLACEHOLDER
+    const otherB = "0x3333333333333333333333333333333333333333" // DEMO PLACEHOLDER
+    const h = harness(Chain.Gnosis)
+    h.readContract.mockImplementation(async ({ address }) =>
+      address === TOKEN ? 60n : 0n,
+    )
+    const rejection = new Error("user rejected")
+    h.sendTransaction
+      .mockResolvedValueOnce({ hash: "0xreset" })
+      .mockResolvedValueOnce({ hash: "0xapprove" })
+      .mockRejectedValueOnce(rejection)
+    vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await expect(
+      h.manager.batchApproveAssets({
+        assets: [erc20(TOKEN, "100"), erc20(otherA, "5"), erc20(otherB, "7")],
+        fromAddress: FROM,
+      }),
+    ).rejects.toThrow("user rejected")
+
+    expect(h.dispatch).toHaveBeenCalledWith(EventType.TransactionDenied, {
+      error: rejection,
+      accountAddress: FROM,
+    })
+    expect(h.sendTransaction).toHaveBeenCalledTimes(3)
   })
 
   test("assigns consecutive nonces when the caller sets one", async () => {

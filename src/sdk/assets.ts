@@ -597,12 +597,22 @@ export class AssetsManager {
     if (!("signer" in wallet)) {
       throw new Error("A signer is required to approve assets")
     }
-    const tx = await wallet.signer.sendTransaction({
-      to: target,
-      data: callData,
-      from: fromAddress,
-      overrides: overrides as Record<string, unknown>,
-    })
+    let tx: { hash: string }
+    try {
+      tx = await wallet.signer.sendTransaction({
+        to: target,
+        data: callData,
+        from: fromAddress,
+        overrides: overrides as Record<string, unknown>,
+      })
+    } catch (error) {
+      console.error(error)
+      this.context.dispatch(EventType.TransactionDenied, {
+        error,
+        accountAddress: fromAddress,
+      })
+      throw error
+    }
 
     await this.context.confirmTransaction(
       tx.hash,
