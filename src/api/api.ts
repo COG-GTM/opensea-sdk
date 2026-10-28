@@ -1579,7 +1579,8 @@ export class OpenSeaAPI {
    * skipped at runtime and the return type is the raw `T`, so a snake_case `T`
    * stays snake_case in both.
    *
-   * @param apiPath Path to URL endpoint under API
+   * @param apiPath Path to URL endpoint under API, starting with a single `/`.
+   *                A path that would leave `apiBaseUrl`'s origin throws a `RangeError`.
    * @param query URL query params. Will be used to create a URLSearchParams object.
    * @param options Request options, with `camelizeResponse` set to `false`.
    * @returns @typeParam T The un-camelized response from the API.
@@ -1591,7 +1592,8 @@ export class OpenSeaAPI {
   ): Promise<T>
   /**
    * Generic fetch method for any API endpoint with automatic rate limit retry
-   * @param apiPath Path to URL endpoint under API
+   * @param apiPath Path to URL endpoint under API, starting with a single `/`.
+   *                A path that would leave `apiBaseUrl`'s origin throws a `RangeError`.
    * @param query URL query params. Will be used to create a URLSearchParams object.
    * @param options Request options like timeout and abort signal.
    * @returns @typeParam T The response from the API.
@@ -1606,14 +1608,13 @@ export class OpenSeaAPI {
     query: object = {},
     options?: RequestOptions,
   ): Promise<Camelize<T> | T> {
+    const baseUrl = this.resolveApiUrl(apiPath)
     return executeWithRateLimit(
       async () => {
         // Snakeize query keys so consumers can pass camelCase args even
         // though the API expects snake_case URL params.
         const qs = this.objectToSearchParams(snakeizeKeysDeep(query))
-        const url = qs
-          ? `${this.apiBaseUrl}${apiPath}?${qs}`
-          : `${this.apiBaseUrl}${apiPath}`
+        const url = qs ? `${baseUrl}?${qs}` : baseUrl
         const raw = await this._fetch(url, "GET", undefined, undefined, options)
         return this.camelizeResponseBody<T>(raw, options)
       },
@@ -1626,7 +1627,8 @@ export class OpenSeaAPI {
    * with the response left in its wire shape. Selected by writing
    * `camelizeResponse: false` as a literal.
    *
-   * @param apiPath Path to URL endpoint under API
+   * @param apiPath Path to URL endpoint under API, starting with a single `/`.
+   *                A path that would leave `apiBaseUrl`'s origin throws a `RangeError`.
    * @param body Data to send.
    * @param headers Additional headers to send with the request.
    * @param options Request options, with `camelizeResponse` set to `false`.
@@ -1640,7 +1642,8 @@ export class OpenSeaAPI {
   ): Promise<T>
   /**
    * Generic post method for any API endpoint with automatic rate limit retry
-   * @param apiPath Path to URL endpoint under API
+   * @param apiPath Path to URL endpoint under API, starting with a single `/`.
+   *                A path that would leave `apiBaseUrl`'s origin throws a `RangeError`.
    * @param body Data to send.
    * @param headers Additional headers to send with the request.
    * @param options Request options. Includes the {@link PostOptions.snakeizeBody}
@@ -1690,9 +1693,9 @@ export class OpenSeaAPI {
     headers?: object,
     options?: PostOptions,
   ): Promise<Camelize<T> | T> {
+    const url = this.resolveApiUrl(apiPath)
     return executeWithRateLimit(
       async () => {
-        const url = `${this.apiBaseUrl}${apiPath}`
         // Snakeize the body so consumers can pass camelCase even though the
         // API expects snake_case JSON. Opt-out via `snakeizeBody: false` for
         // Seaport-shaped bodies whose inner keys must remain camelCase on the
@@ -1705,6 +1708,38 @@ export class OpenSeaAPI {
       },
       { logger: this.logger, signal: options?.signal },
     )
+  }
+
+  /**
+   * Join `apiPath` onto `apiBaseUrl`, refusing any path that would move the
+   * request, and the API key and bearer token `_fetch` attaches, to another
+   * origin. Plain concatenation turns `@evil.example/x` into userinfo plus a
+   * new host and `.evil.example/x` into a longer hostname.
+   */
+  private resolveApiUrl(apiPath: string): string {
+    if (
+      typeof apiPath !== "string" ||
+      !apiPath.startsWith("/") ||
+      apiPath.startsWith("//") ||
+      apiPath.includes("\\")
+    ) {
+      throw new RangeError(
+        `Invalid API path ${JSON.stringify(apiPath)}: must start with a single "/"`,
+      )
+    }
+    const url = `${this.apiBaseUrl}${apiPath}`
+    // A relative apiBaseUrl (e.g. a same-origin browser proxy) is resolved
+    // against the page, or a placeholder outside a browser.
+    const pageUrl =
+      (globalThis as { location?: { href?: string } }).location?.href ??
+      "http://localhost"
+    const baseOrigin = new URL(this.apiBaseUrl, pageUrl).origin
+    if (new URL(url, pageUrl).origin !== baseOrigin) {
+      throw new RangeError(
+        `Invalid API path ${JSON.stringify(apiPath)}: resolves outside ${this.apiBaseUrl}`,
+      )
+    }
+    return url
   }
 
   /**
