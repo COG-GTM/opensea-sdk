@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Cronos, "25"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -244,6 +245,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns WCRO for Cronos", () => {
+      expect(getOfferPaymentToken(Chain.Cronos)).toBe(
+        "0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23",
+      )
+    })
+
     test("returns USDT0 for Stable Chain", () => {
       expect(getOfferPaymentToken(Chain.StableChain)).toBe(
         "0x779ded0c9e1022225f8e0630b35a9b54be713736",
@@ -285,10 +292,18 @@ describe("Utils: chain", () => {
       expect(getOfferPaymentTokenDecimals(Chain.Mainnet)).toBe(18)
       expect(getOfferPaymentTokenDecimals(Chain.Polygon)).toBe(18)
       expect(getOfferPaymentTokenDecimals(Chain.Base)).toBe(18)
+      expect(getOfferPaymentTokenDecimals(Chain.Cronos)).toBe(18)
     })
   })
 
   describe("getDefaultPaymentTokenDecimals", () => {
+    test("seeds WCRO and CRO with 18 decimals on Cronos", () => {
+      expect(getDefaultPaymentTokenDecimals(Chain.Cronos)).toEqual({
+        "0x5c7f8a570d578ed84e63fdfa7b1ee72deae1ae23": 18,
+        [ZERO_ADDRESS]: 18,
+      })
+    })
+
     test("seeds the offer mirror with 6 decimals and native listings with 18 on Arc", () => {
       expect(getDefaultPaymentTokenDecimals(Chain.Arc)).toEqual({
         "0x3600000000000000000000000000000000000000": 6,
@@ -404,6 +419,10 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns CRO (0x0) for Cronos", () => {
+      expect(getListingPaymentToken(Chain.Cronos)).toBe(ZERO_ADDRESS)
+    })
+
     test("returns GUN (0x0) for Gunzilla", () => {
       expect(getListingPaymentToken(Chain.Gunzilla)).toBe(
         "0x0000000000000000000000000000000000000000",
@@ -484,6 +503,12 @@ describe("Utils: chain", () => {
       expect(result.address).toBe(ALTERNATE_CONDUIT_ADDRESS)
     })
 
+    test("returns default OpenSea conduit for Cronos", () => {
+      const result = getDefaultConduit(Chain.Cronos)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
     test("returns default OpenSea conduit for other chains", () => {
       const otherChains = [
         Chain.Polygon,
@@ -525,6 +550,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns cross-chain Seaport 1.6 for Cronos", () => {
+      expect(getSeaportAddress(Chain.Cronos)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+    })
+
     test("returns cross-chain Seaport 1.6 for other chains", () => {
       const otherChains = [
         Chain.Polygon,
@@ -561,6 +592,10 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns OpenSea signed zone for Cronos", () => {
+      expect(getSignedZone(Chain.Cronos)).toBe(OPENSEA_SIGNED_ZONE_V2)
+    })
+
     test("returns OpenSea signed zone for other chains", () => {
       const otherChains = [
         Chain.Polygon,
@@ -590,6 +625,10 @@ describe("Utils: chain", () => {
 
     test("returns alternate fee recipient for MegaETH", () => {
       expect(getFeeRecipient(Chain.MegaETH)).toBe(ALTERNATE_FEE_RECIPIENT)
+    })
+
+    test("returns OpenSea fee recipient for Cronos", () => {
+      expect(getFeeRecipient(Chain.Cronos)).toBe(OPENSEA_FEE_RECIPIENT)
     })
 
     test("returns OpenSea fee recipient for other chains", () => {
@@ -622,6 +661,10 @@ describe("Utils: chain", () => {
 
     test("returns false for Mainnet", () => {
       expect(usesAlternateProtocol(Chain.Mainnet)).toBe(false)
+    })
+
+    test("returns false for Cronos", () => {
+      expect(usesAlternateProtocol(Chain.Cronos)).toBe(false)
     })
 
     test("returns false for other standard chains", () => {
@@ -675,6 +718,12 @@ describe("Utils: chain", () => {
           getOfferPaymentToken(chain),
         )
       }
+    })
+
+    test("returns WCRO for Cronos (same as offer token)", () => {
+      expect(getNativeWrapTokenAddress(Chain.Cronos)).toBe(
+        "0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23",
+      )
     })
 
     test("throws for Stable Chain", () => {
