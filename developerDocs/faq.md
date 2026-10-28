@@ -21,6 +21,8 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
+EVM chains such as Scroll (`Chain.Scroll`, chain id `534352`) are listed there with their default payment tokens in [`src/utils/chain.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/utils/chain.ts).
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
