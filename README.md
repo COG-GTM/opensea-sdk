@@ -161,7 +161,7 @@ const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YO
 
 ### Other chains
 
-Pass any `Chain` value as `chain`. For example, Moonbeam (`Chain.Moonbeam`, chain ID 1284) lists in native GLMR and makes offers in WGLMR:
+To target another EVM chain, pass its `Chain` value as `chain` with a provider for that chain. For example, Moonbeam (`Chain.Moonbeam`, chain ID 1284) lists in native GLMR and makes offers in WGLMR:
 
 ```typescript
 const provider = new ethers.JsonRpcProvider("https://1rpc.io/glmr");
