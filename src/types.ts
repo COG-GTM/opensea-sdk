@@ -221,6 +221,7 @@ export enum Chain {
   WorldChain = "world_chain",
   Kaia = "kaia",
   Bob = "bob",
+  Cronos = "cronos",
 }
 
 // Compile-time check: every ChainIdentifier from the API spec must be assignable to Chain.

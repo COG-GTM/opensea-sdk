@@ -165,6 +165,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0xAcc15dC74880C9944775448304B263D191c6077F" // WGLMR
     case Chain.Kaia:
       return "0x19aac5f612f524b754ca7e7c41cbfa2e981a4432" // WKLAY
+    case Chain.Cronos:
+      return "0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23" // WCRO
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -253,6 +255,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return "0x0000000000000000000000000000000000000000" // ETH
     case Chain.Kaia:
       return "0x0000000000000000000000000000000000000000" // KAIA
+    case Chain.Cronos:
+      return "0x0000000000000000000000000000000000000000" // CRO
     case Chain.Arc:
       return ZERO_ADDRESS
     case Chain.StableChain:

@@ -9,6 +9,7 @@ export const CHAIN_ID_MAP: Record<string, string> = {
   ethereum: "1",
   optimism: "10",
   gnosis: "100",
+  cronos: "25",
   unichain: "130",
   polygon: "137",
   monad: "143",
