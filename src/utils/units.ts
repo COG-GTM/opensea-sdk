@@ -5,6 +5,15 @@ const DECIMAL = /^-?(?:\d+(?:\.\d*)?|\.\d+)$/
 const SCIENTIFIC = /^(-?)(\d*)(?:\.(\d*))?[eE]([+-]?\d+)$/
 
 /**
+ * Longest decimal string `parseUnits` will expand or parse. A uint256 has 78
+ * decimal digits and token decimals are a uint8 (at most 255), so every real
+ * amount fits in 78 + 255 digits plus a sign and a decimal point. Anything
+ * longer is rejected before it is copied, padded or handed to `BigInt`, so a
+ * short input like `1e300000000` cannot expand into hundreds of megabytes.
+ */
+const MAX_DECIMAL_LENGTH = 512
+
+/**
  * Rewrite scientific notation as a plain decimal string, e.g. `1e-8` →
  * `0.00000001`.
  *
@@ -33,6 +42,15 @@ function expandScientificNotation(str: string): string {
   // Where the decimal point lands once the exponent is applied.
   const pointPosition = intDigits.length + Number(exponent)
 
+  // Leave an out-of-range exponent unexpanded so the caller rejects it, rather
+  // than building a string of `pointPosition` zeros.
+  if (
+    !Number.isSafeInteger(pointPosition) ||
+    Math.abs(pointPosition) > MAX_DECIMAL_LENGTH
+  ) {
+    return str
+  }
+
   if (pointPosition <= 0) {
     return `${sign}0.${"0".repeat(-pointPosition)}${digits}`
   }
@@ -57,7 +75,19 @@ export function parseUnits(
   value: string | number | bigint,
   decimals: number,
 ): bigint {
-  const str = expandScientificNotation(value.toString())
+  const raw = value.toString()
+  if (raw.length > MAX_DECIMAL_LENGTH) {
+    throw new Error(
+      `Invalid decimal value: longer than ${MAX_DECIMAL_LENGTH} characters`,
+    )
+  }
+
+  const str = expandScientificNotation(raw)
+  if (str.length > MAX_DECIMAL_LENGTH) {
+    throw new Error(
+      `Invalid decimal value: ${value} expands to more than ${MAX_DECIMAL_LENGTH} characters`,
+    )
+  }
 
   // Reject anything that is not a plain decimal, so malformed input fails here
   // with a clear message rather than as a `SyntaxError` out of `BigInt` below.

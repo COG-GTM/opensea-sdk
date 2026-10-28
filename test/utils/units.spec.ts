@@ -87,6 +87,43 @@ describe("parseUnits", () => {
       "Invalid decimal value",
     )
   })
+
+  test("rejects huge exponents without expanding them", () => {
+    const inputs = [
+      "1e300000000",
+      "1e-500000000",
+      "1e+999999999999999999999",
+      "-1.5E-300000000",
+      "1e513",
+      "1e-513",
+    ]
+    for (const input of inputs) {
+      const start = performance.now()
+      expect(() => parseUnits(input, 18)).toThrow("Invalid decimal value")
+      expect(performance.now() - start).toBeLessThan(50)
+    }
+  })
+
+  test("rejects overlong digit strings before parsing them", () => {
+    const start = performance.now()
+    expect(() => parseUnits("1".repeat(1_000_000), 18)).toThrow(
+      "Invalid decimal value",
+    )
+    const tinyFraction = `0.${"0".repeat(1_000_000)}1`
+    expect(() => parseUnits(tinyFraction, 18)).toThrow("Invalid decimal value")
+    expect(performance.now() - start).toBeLessThan(50)
+  })
+
+  test("still parses the largest real amounts exactly", () => {
+    const maxUint256 = 2n ** 256n - 1n
+    expect(parseUnits(maxUint256.toString(), 0)).toBe(maxUint256)
+    expect(parseUnits(maxUint256, 18)).toBe(maxUint256 * 10n ** 18n)
+    expect(parseUnits("1e77", 0)).toBe(10n ** 77n)
+    expect(parseUnits("1e-255", 255)).toBe(1n)
+    expect(parseUnits(`0.${"0".repeat(254)}1`, 255)).toBe(1n)
+    expect(parseUnits(1e21, 18)).toBe(10n ** 39n)
+    expect(parseUnits("1e-8", 18)).toBe(10000000000n)
+  })
 })
 
 describe("parseEther", () => {
