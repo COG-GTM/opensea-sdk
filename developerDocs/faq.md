@@ -35,6 +35,8 @@ Each EVM chain maps to its numeric chain id through `getChainId()` (for example 
 
 For example, World Chain (chain ID 480) is `Chain.WorldChain` (`"world_chain"`). It lists in native ETH and makes offers in WETH (`0x4200000000000000000000000000000000000006`); `getChainId(Chain.WorldChain)` returns `"480"`.
 
+For example, `Chain.Kaia` (`"kaia"`, chain id `8217`) lists in native KAIA and makes offers in WKLAY (`0x19aac5f612f524b754ca7e7c41cbfa2e981a4432`), using the standard OpenSea Seaport 1.6 and conduit.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?

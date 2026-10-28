@@ -162,6 +162,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d" // WXDAI
     case Chain.Moonbeam:
       return "0xAcc15dC74880C9944775448304B263D191c6077F" // WGLMR
+    case Chain.Kaia:
+      return "0x19aac5f612f524b754ca7e7c41cbfa2e981a4432" // WKLAY
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -247,6 +249,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return "0x0000000000000000000000000000000000000000" // ANIME
     case Chain.Robinhood:
       return "0x0000000000000000000000000000000000000000" // ETH
+    case Chain.Kaia:
+      return "0x0000000000000000000000000000000000000000" // KAIA
     case Chain.Arc:
       return ZERO_ADDRESS
     case Chain.StableChain:

@@ -219,6 +219,7 @@ export enum Chain {
   Moonbeam = "moonbeam",
   Lisk = "lisk",
   WorldChain = "world_chain",
+  Kaia = "kaia",
 }
 
 // Compile-time check: every ChainIdentifier from the API spec must be assignable to Chain.
