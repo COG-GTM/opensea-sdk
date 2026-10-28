@@ -360,6 +360,8 @@ The method only sends what is needed:
 
 Assets that share a contract are approved once (`setApprovalForAll` for ERC721/ERC1155, a max `approve` for ERC20). Approvals cannot be bundled into one transaction through a relay contract such as Multicall3, because `setApprovalForAll` and `approve` record the approval for `msg.sender`, which would be the relay rather than your wallet.
 
+If you pass `overrides.nonce` (a number or bigint), it is used for the first approval and incremented by one for each approval after it.
+
 #### Bulk Transfer
 
 After assets are approved, use `bulkTransfer()` to transfer multiple assets to different recipients:

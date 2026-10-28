@@ -445,6 +445,10 @@ export class AssetsManager {
       throw new Error("A signer is required to approve assets")
     }
 
+    const overridesPerApproval = approvalsNeeded.map((_, index) =>
+      withNonceOffset(overrides, index),
+    )
+
     let lastHash: string | undefined
     for (const [index, { target, callData }] of approvalsNeeded.entries()) {
       try {
@@ -452,7 +456,7 @@ export class AssetsManager {
           to: target,
           data: callData,
           from: fromAddress,
-          overrides,
+          overrides: overridesPerApproval[index],
         })
 
         await this.context.confirmTransaction(
@@ -544,4 +548,27 @@ export class AssetsManager {
       return false
     }
   }
+}
+
+/**
+ * Sequential approvals each need their own nonce, so an explicit
+ * `overrides.nonce` is used for the first and incremented for each one after.
+ */
+function withNonceOffset(
+  overrides: Record<string, unknown> | undefined,
+  offset: number,
+): Record<string, unknown> | undefined {
+  const nonce = overrides?.nonce
+  if (nonce === undefined || nonce === null || offset === 0) {
+    return overrides
+  }
+  if (typeof nonce === "number") {
+    return { ...overrides, nonce: nonce + offset }
+  }
+  if (typeof nonce === "bigint") {
+    return { ...overrides, nonce: nonce + BigInt(offset) }
+  }
+  throw new Error(
+    "overrides.nonce must be a number or bigint when more than one approval is needed",
+  )
 }

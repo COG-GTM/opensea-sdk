@@ -205,4 +205,79 @@ describe("AssetsManager: batchApproveAssets", () => {
     })
     errorSpy.mockRestore()
   })
+
+  test("gives each approval its own nonce when one is supplied", async () => {
+    const h = harness()
+
+    await h.manager.batchApproveAssets({
+      assets: [
+        nft("0x2222222222222222222222222222222222222222", TokenStandard.ERC721),
+        erc20(TOKEN, "1"),
+        nft(
+          "0x3333333333333333333333333333333333333333",
+          TokenStandard.ERC1155,
+        ),
+      ],
+      fromAddress: FROM,
+      overrides: { nonce: 7, gasLimit: 100000n },
+    })
+
+    expect(h.sendTransaction.mock.calls.map(([tx]) => tx.overrides)).toEqual([
+      { nonce: 7, gasLimit: 100000n },
+      { nonce: 8, gasLimit: 100000n },
+      { nonce: 9, gasLimit: 100000n },
+    ])
+  })
+
+  test("increments a bigint nonce", async () => {
+    const h = harness()
+
+    await h.manager.batchApproveAssets({
+      assets: [
+        erc20(TOKEN, "1"),
+        erc20("0x1111111111111111111111111111111111111111", "1"),
+      ],
+      fromAddress: FROM,
+      overrides: { nonce: 7n },
+    })
+
+    expect(h.sendTransaction.mock.calls.map(([tx]) => tx.overrides)).toEqual([
+      { nonce: 7n },
+      { nonce: 8n },
+    ])
+  })
+
+  test("rejects a non-numeric nonce before sending anything", async () => {
+    const h = harness()
+
+    await expect(
+      h.manager.batchApproveAssets({
+        assets: [
+          erc20(TOKEN, "1"),
+          erc20("0x1111111111111111111111111111111111111111", "1"),
+        ],
+        fromAddress: FROM,
+        overrides: { nonce: "7" },
+      }),
+    ).rejects.toThrow("overrides.nonce must be a number or bigint")
+
+    expect(h.sendTransaction).not.toHaveBeenCalled()
+  })
+
+  test("leaves overrides untouched when no nonce is supplied", async () => {
+    const h = harness()
+
+    await h.manager.batchApproveAssets({
+      assets: [
+        erc20(TOKEN, "1"),
+        erc20("0x1111111111111111111111111111111111111111", "1"),
+      ],
+      fromAddress: FROM,
+    })
+
+    expect(h.sendTransaction.mock.calls.map(([tx]) => tx.overrides)).toEqual([
+      undefined,
+      undefined,
+    ])
+  })
 })
