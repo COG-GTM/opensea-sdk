@@ -99,6 +99,7 @@ describe("Utils: chain", () => {
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
       [Chain.Arc, "5042"],
+      [Chain.Taiko, "167000"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -170,6 +171,12 @@ describe("Utils: chain", () => {
       for (const chain of opChains) {
         expect(getOfferPaymentToken(chain)).toBe(expectedAddress)
       }
+    })
+
+    test("returns WETH for Taiko", () => {
+      expect(getOfferPaymentToken(Chain.Taiko)).toBe(
+        "0xA51894664A773981C6C112C43ce576f315d5b1B6",
+      )
     })
 
     test("returns WBERA for BeraChain", () => {
@@ -339,6 +346,7 @@ describe("Utils: chain", () => {
         Chain.Unichain,
         Chain.MegaETH,
         Chain.Ink,
+        Chain.Taiko,
       ]
 
       for (const chain of ethChains) {
@@ -497,6 +505,36 @@ describe("Utils: chain", () => {
         expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
         expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
       }
+    })
+  })
+
+  describe("Taiko wiring", () => {
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Taiko)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers and wraps with Taiko WETH", () => {
+      const weth = "0xA51894664A773981C6C112C43ce576f315d5b1B6"
+      expect(getOfferPaymentToken(Chain.Taiko)).toBe(weth)
+      expect(getNativeWrapTokenAddress(Chain.Taiko)).toBe(weth)
+      expect(getOfferPaymentTokenDecimals(Chain.Taiko)).toBe(18)
+      expect(getDefaultPaymentTokenDecimals(Chain.Taiko)).toEqual({
+        [weth.toLowerCase()]: 18,
+        [ZERO_ADDRESS]: 18,
+      })
+    })
+
+    test("uses the standard OpenSea conduit, Seaport, zone and fee recipient", () => {
+      expect(getDefaultConduit(Chain.Taiko)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+      expect(getSeaportAddress(Chain.Taiko)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Taiko)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Taiko)).toBe(OPENSEA_FEE_RECIPIENT)
+      expect(usesAlternateProtocol(Chain.Taiko)).toBe(false)
     })
   })
 

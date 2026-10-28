@@ -32,6 +32,7 @@ export const CHAIN_ID_MAP: Record<string, string> = {
   ink: "57073",
   animechain: "69000",
   bera_chain: "80094",
+  taiko: "167000",
   blast: "81457",
   zora: "7777777",
 }
