@@ -174,7 +174,7 @@ const provider = new ethers.JsonRpcProvider("https://rpc.gobob.xyz");
 const sdk = new OpenSeaSDK(provider, { chain: Chain.Bob, apiKey: "YOUR_API_KEY" });
 
 // DEMO PLACEHOLDER collection slug
-const { collection } = await sdk.api.getCollection("demo-placeholder-bob-collection");
+const collection = await sdk.api.collections.getCollection("demo-placeholder-bob-collection");
 ```
 
 ### Wallet-authenticated API helpers
