@@ -256,6 +256,23 @@ console.log(activity.windows["24h"]?.volumeUsd)
 The SDK exposes camel-cased fields. A requested window is absent when the token
 has no swaps in that period.
 
+### Cronos
+
+`Chain.Cronos` (`"cronos"`, chain id 25) works like any other EVM chain. Listings default to native CRO (`ZERO_ADDRESS`) and offers to WCRO (`0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23`). Point the provider at a Cronos RPC:
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://evm.cronos.org");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Cronos, apiKey: "YOUR_API_KEY" });
+
+// DEMO PLACEHOLDER: fictional collection slug
+const collection = await sdk.api.collections.getCollection("demo-placeholder-cronos-collection");
+```
+
+Seaport 1.6, the OpenSea conduit and the signed zone are not deployed on Cronos yet, so Cronos orders cannot settle on-chain until they are. The SDK already uses their canonical addresses.
+
 ### Real-time events
 
 Subscribe to marketplace events over WebSocket from the `@opensea/sdk/stream`
