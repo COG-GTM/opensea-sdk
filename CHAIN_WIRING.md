@@ -38,9 +38,13 @@ Checks: `npm run type-check && npm run lint && npm test`.
 ## 3. Values policy
 
 - Chain ids are the real public EVM chain ids.
-- If a token or contract address isn't publicly documented, use a plausible
-  fictional value and mark it `// DEMO PLACEHOLDER (fictional, testnet)` in
-  code and in the PR body. Never point at mainnet funds or use real keys.
+- Any address the SDK approves or pays with (offer/listing payment token,
+  wrapped native token) must be a verified, publicly documented contract. If it
+  can't be verified, don't add a fictional one: leave that helper's `case` out
+  so it throws for the chain, and say so in the PR body.
+- Fictional values are allowed only in tests, fixtures and docs examples, marked
+  `DEMO PLACEHOLDER (fictional, testnet)`. Never point at mainnet funds or use
+  real keys.
 - Use protocol addresses (conduit, Seaport, zone, fee recipient) only through
   the `src/constants.ts` exports.
 
