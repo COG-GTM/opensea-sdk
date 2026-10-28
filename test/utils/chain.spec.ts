@@ -103,6 +103,7 @@ describe("Utils: chain", () => {
       [Chain.Scroll, "534352"],
       [Chain.Taiko, "167000"],
       [Chain.Gnosis, "100"],
+      [Chain.Moonbeam, "1284"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -272,6 +273,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns WGLMR for Moonbeam", () => {
+      expect(getOfferPaymentToken(Chain.Moonbeam)).toBe(
+        "0xAcc15dC74880C9944775448304B263D191c6077F",
+      )
+    })
+
     test("throws for Solana", () => {
       expect(() => getOfferPaymentToken(Chain.Solana)).toThrow(
         "Chain solana is not supported for OpenSea Seaport offers",
@@ -301,6 +308,7 @@ describe("Utils: chain", () => {
       expect(getOfferPaymentTokenDecimals(Chain.Mainnet)).toBe(18)
       expect(getOfferPaymentTokenDecimals(Chain.Polygon)).toBe(18)
       expect(getOfferPaymentTokenDecimals(Chain.Base)).toBe(18)
+      expect(getOfferPaymentTokenDecimals(Chain.Moonbeam)).toBe(18)
     })
   })
 
@@ -322,6 +330,13 @@ describe("Utils: chain", () => {
     test("seeds WETH and ETH with 18 decimals on Mainnet", () => {
       expect(getDefaultPaymentTokenDecimals(Chain.Mainnet)).toEqual({
         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": 18,
+        [ZERO_ADDRESS]: 18,
+      })
+    })
+
+    test("seeds WGLMR and GLMR with 18 decimals on Moonbeam", () => {
+      expect(getDefaultPaymentTokenDecimals(Chain.Moonbeam)).toEqual({
+        "0xacc15dc74880c9944775448304b263d191c6077f": 18,
         [ZERO_ADDRESS]: 18,
       })
     })
@@ -387,6 +402,10 @@ describe("Utils: chain", () => {
 
     test("returns native USDC for Arc", () => {
       expect(getListingPaymentToken(Chain.Arc)).toBe(ZERO_ADDRESS)
+    })
+
+    test("returns native GLMR for Moonbeam", () => {
+      expect(getListingPaymentToken(Chain.Moonbeam)).toBe(ZERO_ADDRESS)
     })
 
     test("returns WAVAX for Avalanche", () => {
@@ -487,6 +506,12 @@ describe("Utils: chain", () => {
       expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS_2)
     })
 
+    test("returns default OpenSea conduit for Moonbeam", () => {
+      const result = getDefaultConduit(Chain.Moonbeam)
+      expect(result.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(result.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+    })
+
     test("returns alternate conduit for Gunzilla", () => {
       const result = getDefaultConduit(Chain.Gunzilla)
       expect(result.key).toBe(ALTERNATE_CONDUIT_KEY)
@@ -565,6 +590,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns cross-chain Seaport 1.6 for Moonbeam", () => {
+      expect(getSeaportAddress(Chain.Moonbeam)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+    })
+
     test("returns alternate Seaport 1.6 for Gunzilla", () => {
       expect(getSeaportAddress(Chain.Gunzilla)).toBe(
         ALTERNATE_SEAPORT_V1_6_ADDRESS,
@@ -614,6 +645,10 @@ describe("Utils: chain", () => {
       expect(getSignedZone(Chain.Mainnet)).toBe(OPENSEA_SIGNED_ZONE_V2)
     })
 
+    test("returns OpenSea signed zone for Moonbeam", () => {
+      expect(getSignedZone(Chain.Moonbeam)).toBe(OPENSEA_SIGNED_ZONE_V2)
+    })
+
     test("returns alternate signed zone for Gunzilla", () => {
       expect(getSignedZone(Chain.Gunzilla)).toBe(
         ALTERNATE_SIGNED_ZONE_V2_ADDRESS,
@@ -647,6 +682,10 @@ describe("Utils: chain", () => {
   describe("getFeeRecipient", () => {
     test("returns OpenSea fee recipient for Mainnet", () => {
       expect(getFeeRecipient(Chain.Mainnet)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+
+    test("returns OpenSea fee recipient for Moonbeam", () => {
+      expect(getFeeRecipient(Chain.Moonbeam)).toBe(OPENSEA_FEE_RECIPIENT)
     })
 
     test("returns Gunzilla fee recipient for Gunzilla", () => {
@@ -691,6 +730,10 @@ describe("Utils: chain", () => {
 
     test("returns false for Mainnet", () => {
       expect(usesAlternateProtocol(Chain.Mainnet)).toBe(false)
+    })
+
+    test("returns false for Moonbeam", () => {
+      expect(usesAlternateProtocol(Chain.Moonbeam)).toBe(false)
     })
 
     test("returns false for other standard chains", () => {
@@ -749,6 +792,12 @@ describe("Utils: chain", () => {
     test("returns WXDAI for Gnosis (same as offer token)", () => {
       expect(getNativeWrapTokenAddress(Chain.Gnosis)).toBe(
         "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
+      )
+    })
+
+    test("returns WGLMR for Moonbeam (same as offer token)", () => {
+      expect(getNativeWrapTokenAddress(Chain.Moonbeam)).toBe(
+        "0xAcc15dC74880C9944775448304B263D191c6077F",
       )
     })
 

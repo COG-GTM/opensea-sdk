@@ -216,6 +216,7 @@ export enum Chain {
   Taiko = "taiko",
   Mode = "mode",
   Gnosis = "gnosis",
+  Moonbeam = "moonbeam",
 }
 
 // Compile-time check: every ChainIdentifier from the API spec must be assignable to Chain.

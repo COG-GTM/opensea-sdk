@@ -158,6 +158,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0xA51894664A773981C6C112C43ce576f315d5b1B6" // WETH
     case Chain.Gnosis:
       return "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d" // WXDAI
+    case Chain.Moonbeam:
+      return "0xAcc15dC74880C9944775448304B263D191c6077F" // WGLMR
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -247,6 +249,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return ZERO_ADDRESS
     case Chain.Gnosis:
       return ZERO_ADDRESS // xDAI
+    case Chain.Moonbeam:
+      return ZERO_ADDRESS // GLMR
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown listing currency for ${exhaustiveChain}`)

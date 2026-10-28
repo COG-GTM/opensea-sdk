@@ -29,6 +29,8 @@ For example, Mode is `Chain.Mode` (chain id `34443`): listings are priced in nat
 
 Each value is the OpenSea API chain identifier, e.g. `Chain.Mainnet` (`"ethereum"`), `Chain.Base` (`"base"`) or `Chain.Gnosis` (`"gnosis"`, chain id 100, native xDAI listings and WXDAI offers).
 
+For example, `Chain.Moonbeam` (`"moonbeam"`, chain ID 1284) uses native GLMR for listings and WGLMR (`0xAcc15dC74880C9944775448304B263D191c6077F`) for offers. `getChainId(Chain.Moonbeam)` returns `"1284"`. Seaport 1.6, the OpenSea conduit and the signed zone are not yet deployed on Moonbeam, so its orders cannot settle on-chain until they are.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
