@@ -21,6 +21,8 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
+For example, `Chain.Moonbeam` (`"moonbeam"`, chain ID 1284) uses native GLMR for listings and WGLMR (`0xAcc15dC74880C9944775448304B263D191c6077F`) for offers. `getChainId(Chain.Moonbeam)` returns `"1284"`. Seaport 1.6, the OpenSea conduit and the signed zone are not yet deployed on Moonbeam, so its orders cannot settle on-chain until they are.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?

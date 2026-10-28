@@ -159,6 +159,17 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Other chains
+
+To target another EVM chain, pass its `Chain` value as `chain` with a provider for that chain. For example, Moonbeam (`Chain.Moonbeam`, chain ID 1284) lists in native GLMR and makes offers in WGLMR:
+
+```typescript
+const provider = new ethers.JsonRpcProvider("https://1rpc.io/glmr");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Moonbeam, apiKey: "YOUR_API_KEY" });
+```
+
+Seaport 1.6, the OpenSea conduit and the signed zone are not yet deployed on Moonbeam, so orders built there cannot settle on-chain until they are.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped
