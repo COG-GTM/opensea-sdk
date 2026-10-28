@@ -257,4 +257,22 @@ describe("AssetsManager: batchApproveAssets", () => {
       args: [OPENSEA_CONDUIT_ADDRESS, true],
     })
   })
+
+  test("sums numeric amounts at or above 1e21 without exponent parsing", async () => {
+    const h = harness(Chain.Gnosis)
+
+    await h.manager.batchApproveAssets({
+      assets: [
+        { ...erc20(TOKEN, "0"), amount: 1e21 },
+        { ...erc20(TOKEN, "0"), amount: 2e21 },
+      ],
+      fromAddress: FROM,
+    })
+
+    expect(h.encodeFunctionData).toHaveBeenCalledWith({
+      abi: APPROVE_ABI,
+      functionName: "approve",
+      args: [OPENSEA_CONDUIT_ADDRESS, 3_000_000_000_000_000_000_000n],
+    })
+  })
 })

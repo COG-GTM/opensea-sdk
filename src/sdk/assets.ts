@@ -18,6 +18,13 @@ import { getDefaultConduit } from "../utils/utils"
 import type { SDKContext } from "./context"
 
 /**
+ * Convert a base-unit amount to bigint. `BigInt(n.toString())` throws for
+ * numbers at or above 1e21, which stringify in exponent form.
+ */
+const toBaseUnits = (amount: Amount): bigint =>
+  typeof amount === "number" ? BigInt(amount) : BigInt(amount.toString())
+
+/**
  * Asset transfer and approval operations
  */
 export class AssetsManager {
@@ -389,7 +396,7 @@ export class AssetsManager {
       erc20Totals.set(
         contractAddress,
         (erc20Totals.get(contractAddress) ?? 0n) +
-          BigInt((amount as Amount).toString()),
+          toBaseUnits(amount as Amount),
       )
     }
 
@@ -639,7 +646,7 @@ export class AssetsManager {
           if (!amount) {
             return false
           }
-          return allowance >= BigInt(amount.toString())
+          return allowance >= toBaseUnits(amount)
         }
 
         case TokenStandard.ERC721: {

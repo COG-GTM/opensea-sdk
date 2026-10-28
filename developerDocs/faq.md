@@ -21,25 +21,7 @@ The source code for the SDK can be found on [GitHub](https://github.com/ProjectO
 
 See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/types.ts) for a complete list of supported chains.
 
-EVM chains such as Scroll (`Chain.Scroll`, chain id `534352`) are listed there with their default payment tokens in [`src/utils/chain.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/utils/chain.ts).
-
-For example, Taiko is `Chain.Taiko` (`"taiko"`, chain id `167000`): listings are priced in native ETH and offers use Taiko WETH `0xA51894664A773981C6C112C43ce576f315d5b1B6` ([Taiko contract addresses](https://docs.taiko.xyz/network/contract-addresses)). The OpenSea conduit and signed zone are not yet deployed on Taiko, so orders cannot settle there until OpenSea deploys them.
-
-For example, Mode is `Chain.Mode` (chain id `34443`): listings are priced in native ETH and offers in WETH (`0x4200000000000000000000000000000000000006`). OpenSea's Seaport 1.6, conduit and signed zone are not deployed on Mode yet, so its orders cannot settle on-chain until they are.
-
-Each value is the OpenSea API chain identifier, e.g. `Chain.Mainnet` (`"ethereum"`), `Chain.Base` (`"base"`) or `Chain.Gnosis` (`"gnosis"`, chain id 100, native xDAI listings and WXDAI offers).
-
-For example, `Chain.Moonbeam` (`"moonbeam"`, chain ID 1284) uses native GLMR for listings and WGLMR (`0xAcc15dC74880C9944775448304B263D191c6077F`) for offers. `getChainId(Chain.Moonbeam)` returns `"1284"`. Seaport 1.6, the OpenSea conduit and the signed zone are not yet deployed on Moonbeam, so its orders cannot settle on-chain until they are.
-
-Each EVM chain maps to its numeric chain id through `getChainId()` (for example `Chain.Lisk` is `1135`, `Chain.Base` is `8453`); it throws for non-EVM chains such as `Chain.Solana`.
-
-For example, World Chain (chain ID 480) is `Chain.WorldChain` (`"world_chain"`). It lists in native ETH and makes offers in WETH (`0x4200000000000000000000000000000000000006`); `getChainId(Chain.WorldChain)` returns `"480"`.
-
-For example, `Chain.Kaia` (`"kaia"`, chain id `8217`) lists in native KAIA and makes offers in WKLAY (`0x19aac5f612f524b754ca7e7c41cbfa2e981a4432`), using the standard OpenSea Seaport 1.6 and conduit.
-
-For example, BOB is `Chain.Bob` (`"bob"`, chain id `60808`): listings are priced in native ETH and offers use WETH at `0x4200000000000000000000000000000000000006`.
-
-For example, Cronos is `Chain.Cronos` (`"cronos"`, chain id 25): listings default to native CRO and offers to WCRO (`0x5C7F8A570d578ED84E63fdFA7b1eE72dEae1AE23`). Seaport 1.6, the OpenSea conduit and the signed zone are not deployed on Cronos yet, so Cronos orders cannot settle on-chain until they are.
+Each value is the OpenSea API chain identifier (e.g. `Chain.Mainnet` is `"ethereum"`), and `getChainId()` maps an EVM chain to its numeric chain id (it throws for non-EVM chains such as `Chain.Solana`). Scroll, Taiko, Mode, Gnosis, Moonbeam, Lisk, World Chain, Kaia, BOB and Cronos are supported; see [Other EVM chains](https://github.com/ProjectOpenSea/opensea-sdk#other-evm-chains) in the README for their chain ids, default payment tokens and whether OpenSea's Seaport, conduit and signed zone are deployed there yet.
 
 Please use methods in the v2 API for multichain capabilities.
 
