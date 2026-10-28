@@ -25,6 +25,8 @@ EVM chains such as Scroll (`Chain.Scroll`, chain id `534352`) are listed there w
 
 For example, Taiko is `Chain.Taiko` (`"taiko"`, chain id `167000`): listings are priced in native ETH and offers use Taiko WETH `0xA51894664A773981C6C112C43ce576f315d5b1B6` ([Taiko contract addresses](https://docs.taiko.xyz/network/contract-addresses)). The OpenSea conduit and signed zone are not yet deployed on Taiko, so orders cannot settle there until OpenSea deploys them.
 
+For example, Mode is `Chain.Mode` (chain id `34443`): listings are priced in native ETH and offers in WETH (`0x4200000000000000000000000000000000000006`). OpenSea's Seaport 1.6, conduit and signed zone are not deployed on Mode yet, so its orders cannot settle on-chain until they are.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?

@@ -291,6 +291,27 @@ const sdk = new OpenSeaSDK(provider, { chain: Chain.Scroll, apiKey: "YOUR_API_KE
 const { listings } = await sdk.api.listings.getAllListings("demo-placeholder-collection");
 ```
 
+### Mode
+
+Mode (`Chain.Mode`, chain id `34443`) lists in native ETH and makes offers in
+the OP-stack WETH predeploy (`0x4200000000000000000000000000000000000006`).
+It uses the standard OpenSea Seaport 1.6, conduit, signed zone and fee
+recipient. Those contracts are not deployed on Mode yet, so orders built for
+it cannot settle on-chain until they are.
+
+```typescript
+import { Chain, OpenSeaSDK } from "@opensea/sdk";
+
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Mode, apiKey });
+
+// DEMO PLACEHOLDER contract address
+const activity = await sdk.api.tokens.getTokenActivityStats(
+  Chain.Mode,
+  "0x0000000000000000000000000000000000000001",
+  { windows: ["24h"] },
+)
+```
+
 ### Real-time events
 
 Subscribe to marketplace events over WebSocket from the `@opensea/sdk/stream`

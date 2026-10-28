@@ -98,6 +98,7 @@ describe("Utils: chain", () => {
       [Chain.AnimeChain, "69000"],
       [Chain.Ink, "57073"],
       [Chain.Robinhood, "4663"],
+      [Chain.Mode, "34443"],
       [Chain.Arc, "5042"],
       [Chain.Scroll, "534352"],
       [Chain.Taiko, "167000"],
@@ -756,6 +757,45 @@ describe("Utils: chain", () => {
       )
       expect(getSignedZone(Chain.Scroll)).toBe(OPENSEA_SIGNED_ZONE_V2)
       expect(getFeeRecipient(Chain.Scroll)).toBe(OPENSEA_FEE_RECIPIENT)
+    })
+  })
+
+  describe("Mode", () => {
+    test("returns chain id 34443", () => {
+      expect(getChainId(Chain.Mode)).toBe("34443")
+    })
+
+    test("lists in native ETH", () => {
+      expect(getListingPaymentToken(Chain.Mode)).toBe(ZERO_ADDRESS)
+    })
+
+    test("offers in the OP-stack WETH predeploy", () => {
+      expect(getOfferPaymentToken(Chain.Mode)).toBe(
+        "0x4200000000000000000000000000000000000006",
+      )
+      expect(getOfferPaymentTokenDecimals(Chain.Mode)).toBe(18)
+    })
+
+    test("wraps native ETH into the offer token", () => {
+      expect(getNativeWrapTokenAddress(Chain.Mode)).toBe(
+        "0x4200000000000000000000000000000000000006",
+      )
+    })
+
+    test("uses the standard OpenSea conduit", () => {
+      expect(getDefaultConduit(Chain.Mode)).toEqual({
+        key: OPENSEA_CONDUIT_KEY,
+        address: OPENSEA_CONDUIT_ADDRESS,
+      })
+    })
+
+    test("uses the standard Seaport, signed zone and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Mode)).toBe(false)
+      expect(getSeaportAddress(Chain.Mode)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Mode)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Mode)).toBe(OPENSEA_FEE_RECIPIENT)
     })
   })
 })

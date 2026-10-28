@@ -214,6 +214,7 @@ export enum Chain {
   Arc = "arc",
   Scroll = "scroll",
   Taiko = "taiko",
+  Mode = "mode",
 }
 
 // Compile-time check: every ChainIdentifier from the API spec must be assignable to Chain.
