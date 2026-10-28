@@ -156,6 +156,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x5300000000000000000000000000000000000004" // WETH
     case Chain.Taiko:
       return "0xA51894664A773981C6C112C43ce576f315d5b1B6" // WETH
+    case Chain.Gnosis:
+      return "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d" // WXDAI
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -243,6 +245,8 @@ export const getListingPaymentToken = (chain: Chain) => {
       return ZERO_ADDRESS
     case Chain.StableChain:
       return ZERO_ADDRESS
+    case Chain.Gnosis:
+      return ZERO_ADDRESS // xDAI
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown listing currency for ${exhaustiveChain}`)

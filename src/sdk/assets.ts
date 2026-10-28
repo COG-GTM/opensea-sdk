@@ -7,11 +7,7 @@ import {
   SET_APPROVAL_FOR_ALL_ABI,
   TRANSFER_HELPER_ABI,
 } from "../abi/abis"
-import {
-  MAX_UINT256,
-  MULTICALL3_ADDRESS,
-  TRANSFER_HELPER_ADDRESS,
-} from "../constants"
+import { MULTICALL3_ADDRESS, TRANSFER_HELPER_ADDRESS } from "../constants"
 import {
   type Amount,
   type AssetWithTokenStandard,
@@ -382,89 +378,156 @@ export class AssetsManager {
     const defaultConduit = getDefaultConduit(this.context.chain)
     const cc = this.context.contractCaller
 
+    // Sum ERC20 amounts per token contract so each contract gets a single
+    // approval bounded to the total the caller requested.
+    const erc20Totals = new Map<string, bigint>()
+    for (const { asset, amount } of assets) {
+      if (asset.tokenStandard !== TokenStandard.ERC20) {
+        continue
+      }
+      const contractAddress = asset.tokenAddress.toLowerCase()
+      erc20Totals.set(
+        contractAddress,
+        (erc20Totals.get(contractAddress) ?? 0n) +
+          BigInt((amount as Amount).toString()),
+      )
+    }
+
     // Check which assets need approval and build approval calldata
     const approvalsNeeded: Array<{ target: string; callData: string }> = []
+    // Approvals that must be sent from the owner's signer, in order.
+    const directApprovals: Array<{
+      target: string
+      callData: string
+      description: string
+    }> = []
     const processedContracts = new Set<string>()
 
     for (const { asset, amount } of assets) {
-      const isApproved = await this.checkAssetApproval(
-        asset,
-        fromAddress,
-        defaultConduit.address,
-        amount,
-      )
+      const contractAddress = asset.tokenAddress.toLowerCase()
+      if (processedContracts.has(contractAddress)) {
+        continue
+      }
 
-      if (!isApproved) {
-        // For ERC721/ERC1155, only approve once per contract
-        if (
-          asset.tokenStandard === TokenStandard.ERC721 ||
-          asset.tokenStandard === TokenStandard.ERC1155
-        ) {
-          if (processedContracts.has(asset.tokenAddress.toLowerCase())) {
-            continue
-          }
-          processedContracts.add(asset.tokenAddress.toLowerCase())
-
-          // setApprovalForAll(operator, true)
-          const callData = cc.encodeFunctionData({
-            abi: SET_APPROVAL_FOR_ALL_ABI,
-            functionName: "setApprovalForAll",
-            args: [defaultConduit.address, true],
-          })
-          approvalsNeeded.push({
-            target: asset.tokenAddress,
-            callData,
-          })
-        } else if (asset.tokenStandard === TokenStandard.ERC20) {
-          // One approval per contract, same as the ERC721/ERC1155 branch above.
-          // The amount is always max uint256, so a second entry for the same
-          // token would send an identical, wasted approval.
-          const contractAddress = asset.tokenAddress.toLowerCase()
-          if (processedContracts.has(contractAddress)) {
-            continue
-          }
-          processedContracts.add(contractAddress)
-
-          // approve(spender, amount) - use max uint256 for unlimited
-          const callData = cc.encodeFunctionData({
-            abi: APPROVE_ABI,
-            functionName: "approve",
-            args: [defaultConduit.address, MAX_UINT256],
-          })
-          approvalsNeeded.push({
-            target: asset.tokenAddress,
-            callData,
-          })
+      if (
+        asset.tokenStandard === TokenStandard.ERC721 ||
+        asset.tokenStandard === TokenStandard.ERC1155
+      ) {
+        const isApproved = await this.checkAssetApproval(
+          asset,
+          fromAddress,
+          defaultConduit.address,
+          amount,
+        )
+        if (isApproved) {
+          continue
         }
+        // For ERC721/ERC1155, only approve once per contract
+        processedContracts.add(contractAddress)
+
+        // setApprovalForAll(operator, true)
+        const callData = cc.encodeFunctionData({
+          abi: SET_APPROVAL_FOR_ALL_ABI,
+          functionName: "setApprovalForAll",
+          args: [defaultConduit.address, true],
+        })
+        approvalsNeeded.push({
+          target: asset.tokenAddress,
+          callData,
+        })
+      } else if (asset.tokenStandard === TokenStandard.ERC20) {
+        // Checked once per contract against the summed amount.
+        processedContracts.add(contractAddress)
+        const totalAmount = erc20Totals.get(contractAddress) as bigint
+        const allowance = await this.getERC20Allowance(
+          asset.tokenAddress,
+          fromAddress,
+          defaultConduit.address,
+        )
+        if (allowance >= totalAmount) {
+          continue
+        }
+
+        const callData = cc.encodeFunctionData({
+          abi: APPROVE_ABI,
+          functionName: "approve",
+          args: [defaultConduit.address, totalAmount],
+        })
+
+        // Some tokens (e.g. USDT) revert when changing one nonzero allowance
+        // to another, so clear a leftover allowance first. The reset and the
+        // new approval must both come from the owner, so neither is batched.
+        if (allowance > 0n) {
+          directApprovals.push(
+            {
+              target: asset.tokenAddress,
+              callData: cc.encodeFunctionData({
+                abi: APPROVE_ABI,
+                functionName: "approve",
+                args: [defaultConduit.address, 0n],
+              }),
+              description: "Resetting token allowance before approval",
+            },
+            {
+              target: asset.tokenAddress,
+              callData,
+              description: "Approving asset for transfer",
+            },
+          )
+          continue
+        }
+
+        // approve(spender, amount) - bounded to the requested total
+        approvalsNeeded.push({
+          target: asset.tokenAddress,
+          callData,
+        })
       }
     }
 
-    // No approvals needed
+    // With an explicit nonce, give each transaction the next one in order.
+    let txIndex = 0
+    const nextOverrides = (): Record<string, unknown> | undefined => {
+      const nonce = overrides?.nonce
+      const index = txIndex++
+      if (nonce === undefined || nonce === null) {
+        return overrides
+      }
+      return {
+        ...overrides,
+        nonce:
+          typeof nonce === "bigint"
+            ? nonce + BigInt(index)
+            : Number(nonce) + index,
+      }
+    }
+
+    let lastHash: string | undefined
+    for (const { target, callData, description } of directApprovals) {
+      lastHash = await this.sendApprovalDirect(
+        target,
+        callData,
+        fromAddress,
+        nextOverrides(),
+        description,
+      )
+    }
+
+    // No other approvals needed
     if (approvalsNeeded.length === 0) {
-      return undefined
+      return lastHash
     }
 
     // Single approval: send directly using the signer
     if (approvalsNeeded.length === 1) {
       const { target, callData } = approvalsNeeded[0]
-      const wallet = this.context.wallet
-      if (!("signer" in wallet)) {
-        throw new Error("A signer is required to approve assets")
-      }
-      const tx = await wallet.signer.sendTransaction({
-        to: target,
-        data: callData,
-        from: fromAddress,
-        overrides: overrides as Record<string, unknown>,
-      })
-
-      await this.context.confirmTransaction(
-        tx.hash,
-        EventType.ApproveAllAssets,
+      return this.sendApprovalDirect(
+        target,
+        callData,
+        fromAddress,
+        nextOverrides(),
         "Approving asset for transfer",
       )
-
-      return tx.hash
     }
 
     // Multiple approvals: use Multicall3
@@ -480,7 +543,7 @@ export class AssetsManager {
         abi: MULTICALL3_ABI,
         functionName: "aggregate3",
         args: [calls],
-        overrides: { ...overrides, from: fromAddress },
+        overrides: { ...nextOverrides(), from: fromAddress },
       })
 
       await this.context.confirmTransaction(
@@ -497,6 +560,59 @@ export class AssetsManager {
         accountAddress: fromAddress,
       })
       throw error
+    }
+  }
+
+  /**
+   * Send one approval transaction from the owner's signer and confirm it.
+   */
+  private async sendApprovalDirect(
+    target: string,
+    callData: string,
+    fromAddress: string,
+    overrides: Record<string, unknown> | undefined,
+    description: string,
+  ): Promise<string> {
+    const wallet = this.context.wallet
+    if (!("signer" in wallet)) {
+      throw new Error("A signer is required to approve assets")
+    }
+    const tx = await wallet.signer.sendTransaction({
+      to: target,
+      data: callData,
+      from: fromAddress,
+      overrides: overrides as Record<string, unknown>,
+    })
+
+    await this.context.confirmTransaction(
+      tx.hash,
+      EventType.ApproveAllAssets,
+      description,
+    )
+
+    return tx.hash
+  }
+
+  /**
+   * Read an ERC20 allowance, treating a failed read as zero.
+   */
+  private async getERC20Allowance(
+    tokenAddress: string,
+    owner: string,
+    spender: string,
+  ): Promise<bigint> {
+    try {
+      return (await this.context.contractCaller.readContract({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [owner, spender],
+      })) as bigint
+    } catch (error) {
+      this.context.logger(
+        `Error checking approval for ${tokenAddress}: ${error}`,
+      )
+      return 0n
     }
   }
 

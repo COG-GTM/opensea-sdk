@@ -180,6 +180,23 @@ addresses on Taiko. Seaport 1.6 is deployed there; the OpenSea conduit and
 signed zone are not yet, so orders cannot settle on-chain on Taiko until
 OpenSea deploys them.
 
+### Choosing a chain
+
+Pass an EVM `Chain` enum value as `chain` (non-EVM chains such as
+`Chain.Solana` are not supported by the `OpenSeaSDK` constructor). For
+example, Gnosis (chain id 100) lists in native xDAI and makes offers in WXDAI:
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://rpc.gnosischain.com");
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Gnosis, apiKey: "YOUR_API_KEY" });
+
+// DEMO PLACEHOLDER collection slug
+const { nfts } = await sdk.api.nfts.getNFTsByCollection("demo-placeholder-gnosis-collection");
+```
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped

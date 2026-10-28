@@ -102,6 +102,7 @@ describe("Utils: chain", () => {
       [Chain.Arc, "5042"],
       [Chain.Scroll, "534352"],
       [Chain.Taiko, "167000"],
+      [Chain.Gnosis, "100"],
     ]
 
     for (const [chain, expectedId] of chainIdTests) {
@@ -253,6 +254,12 @@ describe("Utils: chain", () => {
       )
     })
 
+    test("returns WXDAI for Gnosis", () => {
+      expect(getOfferPaymentToken(Chain.Gnosis)).toBe(
+        "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
+      )
+    })
+
     test("returns USDT0 for Stable Chain", () => {
       expect(getOfferPaymentToken(Chain.StableChain)).toBe(
         "0x779ded0c9e1022225f8e0630b35a9b54be713736",
@@ -356,6 +363,10 @@ describe("Utils: chain", () => {
           "0x0000000000000000000000000000000000000000",
         )
       }
+    })
+
+    test("returns xDAI (0x0) for Gnosis", () => {
+      expect(getListingPaymentToken(Chain.Gnosis)).toBe(ZERO_ADDRESS)
     })
 
     test("returns ANIME (0x0) for AnimeChain", () => {
@@ -494,6 +505,13 @@ describe("Utils: chain", () => {
       expect(result.address).toBe(ALTERNATE_CONDUIT_ADDRESS)
     })
 
+    test("returns the OpenSea conduit for Gnosis", () => {
+      const conduit = getDefaultConduit(Chain.Gnosis)
+      expect(conduit.key).toBe(OPENSEA_CONDUIT_KEY)
+      expect(conduit.address).toBe(OPENSEA_CONDUIT_ADDRESS)
+      expect(conduit.address).toBe("0x1e0049783f008a0085193e00003d00cd54003c71")
+    })
+
     test("returns default OpenSea conduit for other chains", () => {
       const otherChains = [
         Chain.Polygon,
@@ -577,6 +595,17 @@ describe("Utils: chain", () => {
       for (const chain of otherChains) {
         expect(getSeaportAddress(chain)).toBe(CROSS_CHAIN_SEAPORT_V1_6_ADDRESS)
       }
+    })
+  })
+
+  describe("Gnosis protocol addresses", () => {
+    test("uses cross-chain Seaport 1.6, signed zone v2 and fee recipient", () => {
+      expect(usesAlternateProtocol(Chain.Gnosis)).toBe(false)
+      expect(getSeaportAddress(Chain.Gnosis)).toBe(
+        CROSS_CHAIN_SEAPORT_V1_6_ADDRESS,
+      )
+      expect(getSignedZone(Chain.Gnosis)).toBe(OPENSEA_SIGNED_ZONE_V2)
+      expect(getFeeRecipient(Chain.Gnosis)).toBe(OPENSEA_FEE_RECIPIENT)
     })
   })
 
@@ -715,6 +744,12 @@ describe("Utils: chain", () => {
           getOfferPaymentToken(chain),
         )
       }
+    })
+
+    test("returns WXDAI for Gnosis (same as offer token)", () => {
+      expect(getNativeWrapTokenAddress(Chain.Gnosis)).toBe(
+        "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
+      )
     })
 
     test("throws for Stable Chain", () => {
