@@ -395,7 +395,12 @@ export class AssetsManager {
 
     // Check which assets need approval and build approval calldata
     const approvalsNeeded: Array<{ target: string; callData: string }> = []
-    const allowanceResets: Array<{ target: string; callData: string }> = []
+    // Approvals that must be sent from the owner's signer, in order.
+    const directApprovals: Array<{
+      target: string
+      callData: string
+      description: string
+    }> = []
     const processedContracts = new Set<string>()
 
     for (const { asset, amount } of assets) {
@@ -443,25 +448,36 @@ export class AssetsManager {
           continue
         }
 
-        // Some tokens (e.g. USDT) revert when changing one nonzero allowance
-        // to another, so clear a leftover allowance first.
-        if (allowance > 0n) {
-          allowanceResets.push({
-            target: asset.tokenAddress,
-            callData: cc.encodeFunctionData({
-              abi: APPROVE_ABI,
-              functionName: "approve",
-              args: [defaultConduit.address, 0n],
-            }),
-          })
-        }
-
-        // approve(spender, amount) - bounded to the requested total
         const callData = cc.encodeFunctionData({
           abi: APPROVE_ABI,
           functionName: "approve",
           args: [defaultConduit.address, totalAmount],
         })
+
+        // Some tokens (e.g. USDT) revert when changing one nonzero allowance
+        // to another, so clear a leftover allowance first. The reset and the
+        // new approval must both come from the owner, so neither is batched.
+        if (allowance > 0n) {
+          directApprovals.push(
+            {
+              target: asset.tokenAddress,
+              callData: cc.encodeFunctionData({
+                abi: APPROVE_ABI,
+                functionName: "approve",
+                args: [defaultConduit.address, 0n],
+              }),
+              description: "Resetting token allowance before approval",
+            },
+            {
+              target: asset.tokenAddress,
+              callData,
+              description: "Approving asset for transfer",
+            },
+          )
+          continue
+        }
+
+        // approve(spender, amount) - bounded to the requested total
         approvalsNeeded.push({
           target: asset.tokenAddress,
           callData,
@@ -469,21 +485,37 @@ export class AssetsManager {
       }
     }
 
-    // Allowance resets must come from the owner and be mined before the new
-    // approval, so they are sent as their own transactions, never batched.
-    for (const { target, callData } of allowanceResets) {
-      await this.sendApprovalDirect(
+    // With an explicit nonce, give each transaction the next one in order.
+    let txIndex = 0
+    const nextOverrides = (): Record<string, unknown> | undefined => {
+      const nonce = overrides?.nonce
+      const index = txIndex++
+      if (nonce === undefined || nonce === null) {
+        return overrides
+      }
+      return {
+        ...overrides,
+        nonce:
+          typeof nonce === "bigint"
+            ? nonce + BigInt(index)
+            : Number(nonce) + index,
+      }
+    }
+
+    let lastHash: string | undefined
+    for (const { target, callData, description } of directApprovals) {
+      lastHash = await this.sendApprovalDirect(
         target,
         callData,
         fromAddress,
-        overrides,
-        "Resetting token allowance before approval",
+        nextOverrides(),
+        description,
       )
     }
 
-    // No approvals needed
+    // No other approvals needed
     if (approvalsNeeded.length === 0) {
-      return undefined
+      return lastHash
     }
 
     // Single approval: send directly using the signer
@@ -493,7 +525,7 @@ export class AssetsManager {
         target,
         callData,
         fromAddress,
-        overrides,
+        nextOverrides(),
         "Approving asset for transfer",
       )
     }
@@ -511,7 +543,7 @@ export class AssetsManager {
         abi: MULTICALL3_ABI,
         functionName: "aggregate3",
         args: [calls],
-        overrides: { ...overrides, from: fromAddress },
+        overrides: { ...nextOverrides(), from: fromAddress },
       })
 
       await this.context.confirmTransaction(
