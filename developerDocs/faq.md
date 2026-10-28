@@ -31,6 +31,8 @@ Each value is the OpenSea API chain identifier, e.g. `Chain.Mainnet` (`"ethereum
 
 For example, `Chain.Moonbeam` (`"moonbeam"`, chain ID 1284) uses native GLMR for listings and WGLMR (`0xAcc15dC74880C9944775448304B263D191c6077F`) for offers. `getChainId(Chain.Moonbeam)` returns `"1284"`. Seaport 1.6, the OpenSea conduit and the signed zone are not yet deployed on Moonbeam, so its orders cannot settle on-chain until they are.
 
+Each EVM chain maps to its numeric chain id through `getChainId()` (for example `Chain.Lisk` is `1135`, `Chain.Base` is `8453`); it throws for non-EVM chains such as `Chain.Solana`.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?

@@ -17,6 +17,7 @@ export const CHAIN_ID_MAP: Record<string, string> = {
   stablechain: "988",
   hyperevm: "999",
   moonbeam: "1284",
+  lisk: "1135",
   sei: "1329",
   soneium: "1868",
   ronin: "2020",
