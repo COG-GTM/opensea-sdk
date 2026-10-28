@@ -509,6 +509,19 @@ export class AssetsManager {
       }
     }
 
+    // Multicall3 can't approve on the owner's behalf, so once any approval
+    // must come from the owner, send the rest from the owner too rather than
+    // leave a partial approval behind if the batch reverts.
+    if (directApprovals.length > 0) {
+      for (const { target, callData } of approvalsNeeded.splice(0)) {
+        directApprovals.push({
+          target,
+          callData,
+          description: "Approving asset for transfer",
+        })
+      }
+    }
+
     let lastHash: string | undefined
     for (const { target, callData, description } of directApprovals) {
       lastHash = await this.sendApprovalDirect(

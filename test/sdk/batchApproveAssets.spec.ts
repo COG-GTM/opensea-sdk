@@ -162,10 +162,11 @@ describe("AssetsManager: batchApproveAssets", () => {
     )
   })
 
-  test("keeps a reset token's approvals out of the Multicall3 batch", async () => {
+  test("sends every approval from the owner once one needs a reset", async () => {
     const otherA = "0x1111111111111111111111111111111111111111" // DEMO PLACEHOLDER
     const otherB = "0x3333333333333333333333333333333333333333" // DEMO PLACEHOLDER
     const h = harness(Chain.Gnosis)
+    h.encodeFunctionData.mockImplementation(({ args }) => `approve:${args[1]}`)
     h.readContract.mockImplementation(async ({ address }) =>
       address === TOKEN ? 60n : 0n,
     )
@@ -175,20 +176,26 @@ describe("AssetsManager: batchApproveAssets", () => {
       fromAddress: FROM,
     })
 
-    // Reset and new approval for TOKEN both come from the owner.
+    // No Multicall3 batch that could revert after TOKEN's allowance changed.
+    expect(h.writeContract).not.toHaveBeenCalled()
     expect(h.sendTransaction.mock.calls.map(c => c[0].to)).toEqual([
       TOKEN,
       TOKEN,
-    ])
-    expect(h.writeContract).toHaveBeenCalledTimes(1)
-    const [{ args }] = h.writeContract.mock.calls[0]
-    expect(args[0].map((c: { target: string }) => c.target)).toEqual([
       otherA,
       otherB,
     ])
-    expect(h.sendTransaction.mock.invocationCallOrder[1]).toBeLessThan(
-      h.writeContract.mock.invocationCallOrder[0],
-    )
+    expect(h.sendTransaction.mock.calls.map(c => c[0].data)).toEqual([
+      "approve:0",
+      "approve:100",
+      "approve:5",
+      "approve:7",
+    ])
+    expect(h.sendTransaction.mock.calls.map(c => c[0].from)).toEqual([
+      FROM,
+      FROM,
+      FROM,
+      FROM,
+    ])
   })
 
   test("assigns consecutive nonces when the caller sets one", async () => {
@@ -206,9 +213,8 @@ describe("AssetsManager: batchApproveAssets", () => {
     })
 
     expect(h.sendTransaction.mock.calls.map(c => c[0].overrides.nonce)).toEqual(
-      [12, 13],
+      [12, 13, 14, 15],
     )
-    expect(h.writeContract.mock.calls[0][0].overrides.nonce).toBe(14)
   })
 
   test("does not reset when there is no existing allowance", async () => {
