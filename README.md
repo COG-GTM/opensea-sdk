@@ -159,6 +159,27 @@ const publicClient = createPublicClient({ chain: mainnet, transport: http() })
 const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YOUR_API_KEY' })
 ```
 
+### Using Taiko
+
+Taiko (`Chain.Taiko`, chain id `167000`) lists in native ETH and makes offers in
+Taiko WETH (`0xA51894664A773981C6C112C43ce576f315d5b1B6`, see the
+[Taiko contract addresses](https://docs.taiko.xyz/network/contract-addresses)).
+Point the provider at a Taiko RPC and pass `Chain.Taiko`:
+
+```typescript
+import { ethers } from "ethers";
+import { OpenSeaSDK, Chain } from "@opensea/sdk";
+
+const provider = new ethers.JsonRpcProvider("https://rpc.mainnet.taiko.xyz");
+// DEMO PLACEHOLDER: use your own API key
+const sdk = new OpenSeaSDK(provider, { chain: Chain.Taiko, apiKey: "YOUR_API_KEY" });
+```
+
+The SDK uses OpenSea's canonical Seaport 1.6, conduit and signed zone
+addresses on Taiko. Seaport 1.6 is deployed there; the OpenSea conduit and
+signed zone are not yet, so orders cannot settle on-chain on Taiko until
+OpenSea deploys them.
+
 ### Wallet-authenticated API helpers
 
 For a server-side EVM signer, `OpenSeaAuth` signs in with SIWE, creates a scoped

@@ -153,6 +153,8 @@ export const getOfferPaymentToken = (chain: Chain) => {
       return "0x0bd7d308f8e1639fab988df18a8011f41eacad73" // WETH
     case Chain.Scroll:
       return "0x5300000000000000000000000000000000000004" // WETH
+    case Chain.Taiko:
+      return "0xA51894664A773981C6C112C43ce576f315d5b1B6" // WETH
     default: {
       const exhaustiveChain: never = chain
       throw new Error(`Unknown offer currency for ${exhaustiveChain}`)
@@ -213,6 +215,7 @@ export const getListingPaymentToken = (chain: Chain) => {
     case Chain.MegaETH:
     case Chain.Ink:
     case Chain.Scroll:
+    case Chain.Taiko:
       return "0x0000000000000000000000000000000000000000" // ETH
     case Chain.Polygon:
       return "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619" // WETH

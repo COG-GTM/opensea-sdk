@@ -213,6 +213,7 @@ export enum Chain {
   StableChain = "stablechain",
   Arc = "arc",
   Scroll = "scroll",
+  Taiko = "taiko",
 }
 
 // Compile-time check: every ChainIdentifier from the API spec must be assignable to Chain.

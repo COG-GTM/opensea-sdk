@@ -23,6 +23,8 @@ See the `Chain` enum in [`src/types.ts`](https://github.com/ProjectOpenSea/opens
 
 EVM chains such as Scroll (`Chain.Scroll`, chain id `534352`) are listed there with their default payment tokens in [`src/utils/chain.ts`](https://github.com/ProjectOpenSea/opensea-sdk/blob/main/src/utils/chain.ts).
 
+For example, Taiko is `Chain.Taiko` (`"taiko"`, chain id `167000`): listings are priced in native ETH and offers use Taiko WETH `0xA51894664A773981C6C112C43ce576f315d5b1B6` ([Taiko contract addresses](https://docs.taiko.xyz/network/contract-addresses)). The OpenSea conduit and signed zone are not yet deployed on Taiko, so orders cannot settle there until OpenSea deploys them.
+
 Please use methods in the v2 API for multichain capabilities.
 
 ## Why is there no SDK method for the API request I am trying to call?
