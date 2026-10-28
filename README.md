@@ -161,8 +161,9 @@ const sdk = new OpenSeaSDK({ publicClient }, { chain: Chain.Mainnet, apiKey: 'YO
 
 ### Choosing a chain
 
-Pass any `Chain` enum value as `chain`. For example, Gnosis (chain id 100)
-lists in native xDAI and makes offers in WXDAI:
+Pass an EVM `Chain` enum value as `chain` (non-EVM chains such as
+`Chain.Solana` are not supported by the `OpenSeaSDK` constructor). For
+example, Gnosis (chain id 100) lists in native xDAI and makes offers in WXDAI:
 
 ```typescript
 import { ethers } from "ethers";
